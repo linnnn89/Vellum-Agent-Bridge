@@ -1,0 +1,69 @@
+name: Import Vellum source (one-time)
+
+on:
+  push:
+    branches: [main]
+    paths: ['.bootstrap/**']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: vellum-source-import
+  cancel-in-progress: false
+
+jobs:
+  import:
+    if: github.repository == 'wieslawsoltes/Vellum' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - name: Verify and restore the original source files
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import hashlib
+          import json
+          import lzma
+          from pathlib import Path, PurePosixPath
+
+          raw = b''.join(Path(f'.bootstrap/part-{i:02}').read_bytes() for i in range(8))
+          expected = 'b02488a5cb15464d67c5b5261ef9e005c2125992bceccf5e67eeb888c2ee1e60'
+          if hashlib.sha256(raw).hexdigest() != expected:
+              raise SystemExit('Source archive checksum mismatch')
+          files = json.loads(lzma.decompress(raw, memlimit=256 * 1024 * 1024))
+          allowed = {
+              '.gitignore', 'ARCHITECTURE.md', 'LICENSE', 'README.md', 'build.py',
+              'index.html', 'styles.css', 'requirements-dev.txt',
+              'scripts/build_site.py', 'scripts/ci.py', 'tests/smoke.py',
+              'tests/results.json', 'src/app.js', 'src/document.js',
+              'src/icons.js', 'src/renderer.js', 'src/svg.js',
+          }
+          if set(files) != allowed:
+              raise SystemExit('Unexpected source manifest')
+          for name, content in files.items():
+              path = PurePosixPath(name)
+              if path.is_absolute() or '..' in path.parts or not isinstance(content, str):
+                  raise SystemExit(f'Invalid source entry: {name}')
+              target = Path(name)
+              if any(parent.is_symlink() for parent in [target, *target.parents]):
+                  raise SystemExit(f'Symlink in source path: {name}')
+              target.parent.mkdir(parents=True, exist_ok=True)
+              target.write_text(content, encoding='utf-8')
+          print(f'Restored {len(files)} verified source files')
+          PY
+      - name: Validate source and build the static application
+        run: python3 scripts/ci.py --skip-browser
+      - name: Commit the editable source and remove transport files
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm -r .bootstrap
+          git add .gitignore ARCHITECTURE.md LICENSE README.md build.py index.html styles.css requirements-dev.txt scripts src tests/smoke.py tests/results.json
+          git commit -m 'feat: import Vellum WebGPU editor, documentation and browser tests'
+          git push origin HEAD:main
