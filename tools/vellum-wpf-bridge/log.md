@@ -88,3 +88,28 @@
   1. 支持矢量 PathGeometry 映射输出；
   2. 接入 AI Spec Refiner 自动化调整布局与样式；
   3. 扩展 Avalonia XAML 生成器支持跨平台 Linux/macOS。
+
+
+## 2026-09-06 23:06（北京时间）— GROK 遗留生成安全问题修复
+
+- 目标：修复字面量 markup extension 注入、未校验 IR 的属性/注释注入和八位颜色重复转换；保留会话开始时已有的未提交修复，不提交或推送。
+- 变更：utils/wpf_generator 为 Title、Content、Text、ToolTip、Tag、FontFamily 加入字面量转义；注释中的连续连字符安全编码。新增 spec_validator.py，在 UiSpec.from_dict 和两个公开模型生成入口检查必填字段、类型、有限数值、尺寸、Padding、Grid 索引和树结构。fmt_length 拒绝任意字符串。CLI 校验成功后才创建输出目录。同步 schema 和 README。
+- 颜色证据：vellum_adapter 和 semantic_mapper 已将源 RGBA 转成 ARGB，旧 ResourceManager 会再次转换。现在仅源转换函数处理 RGBA，IR 资源、去重和内联颜色使用保留 ARGB 的函数；源 #12345680 → IR/WPF #80123456，序列化往返不变。
+- 失败与修正：首轮 54 项中 53 通过，快照因过度转义普通注释/文本格式失败；缩小到危险连字符序列及花括号字面量，未修改 golden 基准。
+- 验证：py -3.10 tools/vellum-wpf-bridge/tests/run_tests.py，65/65 通过，0 跳过（Python 3.10.0、.NET SDK 10.0.302）。新增 11 项安全测试含多组恶意输入、Agent patch 到生成器、已有输出不被非法 spec 覆盖、颜色去重和往返。真实 WPF XamlReader 验证七类属性字面值与实际 ARGB，原有 WPF Grid 测量和 golden 通过。git diff --check 通过（仅 Git 的换行规范提示）。
+- 反证自审：XML 能解析不代表 WPF 不执行绑定，因此增加实际 XamlReader 和 BindingOperations 检查；颜色首次输出正确不代表往返/去重正确，因此分别覆盖。
+- 边界：手写 IR 八位色必须按 ARGB，无法自动识别误填 RGBA；可选字段仍允许默认值，未知扩展字段仍保留既有处理，未实现完整通用 JSON Schema 引擎。现有危险 Command/非法颜色丢弃策略保持。未发布、提交或推送，无新增依赖。
+
+
+## 2026-09-06 23:24（北京时间）— GROK 后续反馈修复
+
+- 范围：报告正文泄露、提示/无障碍属性空操作、IR token 校验、convert 补丁入口、图片链路、ARGB 主题亮度及编辑器翻译 HTML 输出。保留已有未提交变更，未执行 Git 提交、推送、部署或远端 Actions。
+- 报告：refinement-report v2 的 oldValue/newValue/reason 全部替换为 redacted 标记，不保留正文或可猜测正文哈希；refined spec 和 XAML 必须保留实际文案，文档明确不属于可公开审计产物。同步 docs/SPEC_CONSTRAINTS.md。
+- 语义：在节点最外层生成 ToolTip、AutomationProperties.Name/HelpText（含 Border），显式 tooltip 覆盖 placeholder 提示；继续做 XAML 字面量转义。semanticRole 明确为元数据，不自动改变控件类型。
+- IR：from_dict 和 SafeAgentRefiner 基底/结果拒绝非标识符 command 与非 hex 颜色；转换时跳过无法产生合法 ASCII 标识符的推断 command。直接构造模型保留生成器安全丢弃防御。主题按 ARGB 最后六位计算 RGB 亮度，不把 alpha 当 R。
+- convert：移除 stub 调用，新增 --patch，经 canonical SHA-256 校验后使用 SafeAgentRefiner；无补丁时仍验证映射 IR，不引入 Agent 服务。
+- 图片：沿用源 assets 内嵌资源，保留至 IR；assets.py 验证 base64、位图签名及单图 20 MiB/总计 100 MiB 限额，导出内容哈希命名的本地 Assets 文件。Image.Source 使用生成路径。generate_all 现含 bytes 图片，CLI 分类型落盘。缺失资源、外部 URL/路径、SVG/WebP 明确拒绝，不静默丢失；未添加转码依赖。WPF 工程需复制 Assets 到输出目录，README 有配置示例。
+- 编辑器：legacy data-i18n-html 使用 textContent；HTML 模板中的翻译及 modal/section/快捷键标签在输出边界转义，去除三处参数预转义以避免双重转义，t() 本身仍返回原始文本。
+- 验证：Bridge 74/74 通过、无跳过，包含 WPF 实际图片解码、AutomationProperties 值、字面量/ARGB、源图片 convert→独立 generate 和恶意补丁。原有 Refiner 测试 fixture 的字符串轨道改成契约要求的数字轨道，保持所有原断言；首次严格基底校验因此暴露该旧 fixture，修正后通过。Linux 仅跳过 Windows WPF 运行时检查，纯 Python 安全测试照常执行。
+- 编辑器 CI：scripts/ci.py 首次因 Playwright 配套浏览器缺失而失败；使用现有 CHROMIUM_EXECUTABLE 入口和本机 Chrome 独立测试上下文重跑，JS 语法/构建与 37 项浏览器检查全部通过（Canvas 2D）。没有下载浏览器；这不等于远端 GitHub Actions 已运行。
+- 反证自审：报告脱敏不等于 spec 脱敏，已明确区分；有 Source 不等于图片可读，新增真实 WPF 解码；XML 中有 AutomationProperties 不等于运行时生效，新增实际属性读取断言。现有样例/golden 未改写。待办仅为用户决定的 Git/远端交付；SVG/WebP 转码不在此次实现内。

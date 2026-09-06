@@ -756,7 +756,8 @@ class I18nEngine {
     const htmlNodes = root.querySelectorAll('[data-i18n-html]');
     for (const el of htmlNodes) {
       const key = el.getAttribute('data-i18n-html');
-      if (key) el.innerHTML = this.t(key);
+      // Translation values are text, including this legacy attribute.
+      if (key) el.textContent = this.t(key);
     }
 
     const titleNodes = root.querySelectorAll('[data-i18n-title]');

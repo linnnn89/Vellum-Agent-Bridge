@@ -11,6 +11,23 @@ internal static class Program
     [STAThread]
     private static int Main(string[] args)
     {
+        if (args.Length == 2 && args[0] == "--security")
+        {
+            return CheckSecurity(args[1]);
+        }
+        if (args.Length == 2 && args[0] == "--image")
+        {
+            var doc = XDocument.Parse(File.ReadAllText(args[1]));
+            XNamespace x = "http://schemas.microsoft.com/winfx/2006/xaml";
+            doc.Root!.Attribute(x + "Class")!.Remove();
+            var context = new System.Windows.Markup.ParserContext { BaseUri = new Uri(Path.GetFullPath(args[1])) };
+            var window = (Window)System.Windows.Markup.XamlReader.Parse(doc.ToString(), context);
+            var bitmap = (System.Windows.Media.Imaging.BitmapSource)((Image)window.Content).Source;
+            if (bitmap.PixelWidth != 1 || bitmap.PixelHeight != 1)
+                throw new InvalidOperationException("Image did not decode");
+            Console.WriteLine("IMAGE_OK");
+            return 0;
+        }
         if (args.Length < 3)
         {
             Console.Error.WriteLine("Usage: WpfCanary <MainWindow.xaml> <width1> <width2>");
@@ -32,6 +49,33 @@ internal static class Program
         var delta = a.Zip(b, (left, right) => right - left).ToArray();
 
         Console.WriteLine($"{Fmt(width1)}={Join(a)};{Fmt(width2)}={Join(b)};delta={Join(delta)}");
+        return 0;
+    }
+
+    private static int CheckSecurity(string path)
+    {
+        var doc = XDocument.Parse(File.ReadAllText(path));
+        XNamespace x = "http://schemas.microsoft.com/winfx/2006/xaml";
+        doc.Root!.Attribute(x + "Class")!.Remove();
+        var window = (Window)System.Windows.Markup.XamlReader.Parse(doc.ToString());
+        const string literal = "{Binding Steal}";
+        var panel = (Panel)window.Content;
+        var button = (Button)panel.Children[0];
+        var input = (TextBox)panel.Children[1];
+        var text = (TextBlock)panel.Children[2];
+        if (window.Title != literal || (string)button.Content != literal ||
+            (string)button.ToolTip != literal ||
+            System.Windows.Automation.AutomationProperties.GetName(button) != literal ||
+            System.Windows.Automation.AutomationProperties.GetHelpText(button) != literal ||
+            input.Text != literal || (string)input.ToolTip != literal ||
+            (string)input.Tag != literal || text.Text != literal || text.FontFamily.Source != literal ||
+            System.Windows.Data.BindingOperations.IsDataBound(button, Button.ContentProperty) ||
+            System.Windows.Data.BindingOperations.IsDataBound(input, TextBox.TextProperty) ||
+            ((System.Windows.Media.SolidColorBrush)text.Foreground).Color.ToString() != "#80123456")
+        {
+            throw new InvalidOperationException("Literal or ARGB interpretation changed");
+        }
+        Console.WriteLine("SECURITY_OK");
         return 0;
     }
 

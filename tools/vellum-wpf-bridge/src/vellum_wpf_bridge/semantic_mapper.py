@@ -19,7 +19,7 @@ from .models import (
 )
 from .report import ConversionReport
 from .resources import ResourceManager
-from .utils import normalize_hex_color, to_pascal_case
+from .utils import normalize_hex_color, to_pascal_case, is_binding_identifier
 
 
 _CONTAINER_NAME_MARKERS = (
@@ -51,7 +51,7 @@ class SemanticMapper:
             window_width = target_frame.w if target_frame.w > 0 else 1200.0
             window_height = target_frame.h if target_frame.h > 0 else 800.0
             if target_frame.fill:
-                hex_val = target_frame.fill.lstrip("#")
+                hex_val = target_frame.fill.lstrip("#")[-6:]
                 if len(hex_val) >= 6:
                     r = int(hex_val[0:2], 16)
                     g = int(hex_val[2:4], 16)
@@ -99,6 +99,7 @@ class SemanticMapper:
             theme=theme,
             resources=resources,
             root=root_ui_node,
+            assets=dict(doc.assets),
         )
         return spec
 
@@ -192,7 +193,7 @@ class SemanticMapper:
         )
         layout = apply_sizing_contract(UiLayout(), node, report=self.report)
         props: Dict[str, Any] = {"text": button_text or "Button"}
-        if command_name:
+        if is_binding_identifier(command_name):
             props["command"] = command_name
 
         self.report.record_node(converted=True)

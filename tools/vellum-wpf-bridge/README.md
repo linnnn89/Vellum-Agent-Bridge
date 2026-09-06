@@ -106,6 +106,12 @@ vellum-wpf generate output/ui-spec.json -o output-wpf
 ```
 > 无需访问原始 `.vellum` 文件，直接基于 IR 合成同等质量的 XAML。
 
+生成前校验 IR 的必填字段、字段类型、有限数值、非负尺寸、四项 Padding、整数 Grid 索引和树结构；错误包含字段路径，校验失败不创建输出目录或改写已有 XAML。宽高接受非负数字或 `Auto`；Grid 轨道另接受 `*`，不接受任意字符串或加权星号。可选字段仍使用既有默认值。直接调用生成器也会校验模型。
+
+文本属性按字面量输出：以 `{` 开头的标题、文字、占位符和字体名会加 XAML 的 `{}` 转义前缀；合法 Command 绑定和生成器创建的资源引用保持有效。来源注释中的连续连字符会转义。
+
+**颜色约定**：源 `.vellum` 的八位颜色为 `#RRGGBBAA`，进入 IR 前转换一次；`ui-spec.json` 的样式和资源八位颜色统一为 `#AARRGGBB`，资源管理器不得再次移动 alpha。例如源 `#12345680` 对应 IR/WPF `#80123456`。手写 IR 应遵守此约定，无法仅凭八位字符串自动判断作者使用了哪种顺序。三位、六位颜色继续支持。
+
 ### 4. 校验 Agent 修正补丁 (Safe Refiner)
 ```bash
 vellum-wpf refine-validate output/ui-spec.json path/to/patch.json
@@ -117,11 +123,21 @@ vellum-wpf refine-apply output/ui-spec.json path/to/patch.json -o output-refined
 ```
 > 生成更新后的 `refined-ui-spec.json` 与审计报告 `refinement-report.json`。
 
+审计报告 v2 的 `oldValue`、`newValue`、`reason` 仅保留 `{"redacted": true}`，不保存原文或正文哈希。**refined spec 和 XAML 仍是包含实际文案的产品文件，不是脱敏审计文件**，不应因报告脱敏而一并公开上传。
+
+`props.tooltip`、`props.accessibleName`、`props.helpText` 分别生成 `ToolTip`、`AutomationProperties.Name`、`AutomationProperties.HelpText`，并遵循字面量转义。显式 tooltip 优先于输入框的 placeholder 提示；`semanticRole` 仍为语义元数据，不自动改变 WPF 控件类型。
+
+`convert ... --patch path/to/patch.json` 在映射后通过 SafeAgentRefiner 应用补丁，并输出脱敏报告；补丁哈希必须对应同一源文件/页面使用 `convert --spec-only` 得到的 IR。未传补丁时只转换与校验，不调用 Agent 服务。
+
+图片资源使用 `assets: {"pic1": "data:image/png;base64,..."}`，节点使用 `props.assetId: "pic1"`。源 `.vellum` 的 assets 会保留到 IR，生成器导出 `Assets/<内容哈希>.<扩展名>` 并写入 Image.Source。支持 PNG/JPEG/GIF/BMP/ICO/TIFF，单图不超过 20 MiB、总计不超过 100 MiB；缺失图片、SVG/WebP、路径和外部 URL 明确报错，不自动读取或下载。将生成结果放入 WPF 工程时，需要将 Assets 作为内容文件复制到输出目录，例如 `<Content Include="Assets\**\*" CopyToOutputDirectory="PreserveNewest" />`。`generate_all()` 返回值中 XAML 为字符串、图片为 bytes；CLI 会分别写出。
+
+JSON IR 的 Command 必须是 ASCII 标识符，样式/资源颜色必须是带 `#` 的三、六或八位十六进制；无效值在读取和补丁应用阶段拒绝。直接构造模型的生成器仍保留安全丢弃无效 Command/颜色的防御。
+
 ---
 
 ## 5. 质量保证与测试架构 (Quality Assurance)
 
-运行全部 47 项自动化测试：
+运行全部自动化测试：
 
 ```bash
 python tests/run_tests.py

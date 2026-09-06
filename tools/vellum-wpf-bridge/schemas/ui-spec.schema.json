@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://vellum.design/schemas/ui-spec.schema.json",
   "title": "SemanticUiSpec",
-  "description": "Semantic UI specification bridging Vellum design documents to UI frameworks",
+  "description": "Semantic UI specification. Eight-digit IR colors use #AARRGGBB; source Vellum RGBA is converted before entering IR.",
   "type": "object",
   "required": ["version", "name", "type", "root"],
   "properties": {
@@ -18,9 +18,11 @@
       "enum": ["window", "page", "component"]
     },
     "width": {
+      "minimum": 0,
       "type": "number"
     },
     "height": {
+      "minimum": 0,
       "type": "number"
     },
     "theme": {
@@ -29,7 +31,12 @@
     },
     "resources": {
       "type": "object",
-      "additionalProperties": { "type": "string" }
+      "additionalProperties": { "type": "string", "pattern": "^#[0-9A-Fa-f]{3}([0-9A-Fa-f]{3}|[0-9A-Fa-f]{5})?$" }
+    },
+    "assets": {
+      "type": "object",
+      "description": "Embedded raster data URIs keyed by assetId; exported as local Assets files",
+      "additionalProperties": { "type": "string", "pattern": "^data:image/(png|jpeg|gif|bmp|x-icon|tiff);base64," }
     },
     "root": {
       "$ref": "#/$defs/UiNode"
@@ -75,11 +82,11 @@
           "properties": {
             "type": { "type": "string", "enum": ["stack", "grid", "dock", "absolute", "none"] },
             "direction": { "type": "string", "enum": ["horizontal", "vertical"] },
-            "gap": { "type": "number" },
+            "gap": { "type": "number", "minimum": 0 },
             "padding": {
               "oneOf": [
-                { "type": "number" },
-                { "type": "array", "items": { "type": "number" }, "minItems": 4, "maxItems": 4 }
+                { "type": "number", "minimum": 0 },
+                { "type": "array", "items": { "type": "number", "minimum": 0 }, "minItems": 4, "maxItems": 4 }
               ]
             },
             "align": { "type": "string", "enum": ["start", "center", "end", "stretch"] },
@@ -88,29 +95,29 @@
             "heightMode": { "type": "string", "enum": ["fixed", "fill"] },
             "constraintH": { "type": "string", "enum": ["left", "right", "center", "stretch", "scale"] },
             "constraintV": { "type": "string", "enum": ["top", "bottom", "center", "stretch", "scale"] },
-            "designWidth": { "type": "number" },
-            "designHeight": { "type": "number" },
+            "designWidth": { "type": "number", "minimum": 0 },
+            "designHeight": { "type": "number", "minimum": 0 },
             "x": { "type": "number" },
             "y": { "type": "number" },
-            "width": { "oneOf": [{ "type": "number" }, { "type": "string" }] },
-            "height": { "oneOf": [{ "type": "number" }, { "type": "string" }] },
-            "grow": { "type": "number" },
-            "columns": { "type": "array", "items": { "oneOf": [{ "type": "number" }, { "type": "string" }] } },
-            "rows": { "type": "array", "items": { "oneOf": [{ "type": "number" }, { "type": "string" }] } },
-            "gridColumn": { "type": "integer" },
-            "gridRow": { "type": "integer" }
+            "width": { "oneOf": [{ "type": "number", "minimum": 0 }, { "enum": ["Auto"] }] },
+            "height": { "oneOf": [{ "type": "number", "minimum": 0 }, { "enum": ["Auto"] }] },
+            "grow": { "type": "number", "minimum": 0 },
+            "columns": { "type": "array", "items": { "oneOf": [{ "type": "number", "minimum": 0 }, { "enum": ["*", "Auto"] }] } },
+            "rows": { "type": "array", "items": { "oneOf": [{ "type": "number", "minimum": 0 }, { "enum": ["*", "Auto"] }] } },
+            "gridColumn": { "type": "integer", "minimum": 0, "maximum": 2147483647 },
+            "gridRow": { "type": "integer", "minimum": 0, "maximum": 2147483647 }
           }
         },
         "style": {
           "type": "object",
           "properties": {
-            "background": { "type": "string" },
-            "foreground": { "type": "string" },
-            "borderColor": { "type": "string" },
-            "borderThickness": { "type": "number" },
-            "cornerRadius": { "type": "number" },
-            "opacity": { "type": "number" },
-            "fontSize": { "type": "number" },
+            "background": { "type": "string", "pattern": "^#[0-9A-Fa-f]{3}([0-9A-Fa-f]{3}|[0-9A-Fa-f]{5})?$" },
+            "foreground": { "type": "string", "pattern": "^#[0-9A-Fa-f]{3}([0-9A-Fa-f]{3}|[0-9A-Fa-f]{5})?$" },
+            "borderColor": { "type": "string", "pattern": "^#[0-9A-Fa-f]{3}([0-9A-Fa-f]{3}|[0-9A-Fa-f]{5})?$" },
+            "borderThickness": { "type": "number", "minimum": 0 },
+            "cornerRadius": { "type": "number", "minimum": 0 },
+            "opacity": { "type": "number", "minimum": 0, "maximum": 1 },
+            "fontSize": { "type": "number", "exclusiveMinimum": 0 },
             "fontWeight": { "oneOf": [{ "type": "number" }, { "type": "string" }] },
             "fontFamily": { "type": "string" },
             "fontStyle": { "type": "string" },
@@ -122,7 +129,11 @@
           "properties": {
             "text": { "type": "string" },
             "placeholder": { "type": "string" },
-            "command": { "type": "string" },
+            "command": { "type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]*$", "maxLength": 128 },
+            "tooltip": { "type": "string" },
+            "accessibleName": { "type": "string" },
+            "helpText": { "type": "string" },
+            "semanticRole": { "type": "string" },
             "icon": { "type": "string" },
             "assetId": { "type": "string" }
           },

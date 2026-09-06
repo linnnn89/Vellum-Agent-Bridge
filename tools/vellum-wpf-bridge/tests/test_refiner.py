@@ -28,7 +28,7 @@ SAMPLE_SPEC = {
         "name": "RootPanel",
         "layout": {
             "type": "grid",
-            "columns": ["260", "*", "260"],
+            "columns": [260, "*", 260],
             "direction": "horizontal",
         },
         "style": {
