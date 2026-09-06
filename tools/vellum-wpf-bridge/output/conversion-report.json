@@ -1,0 +1,75 @@
+{
+  "nodesTotal": 34,
+  "nodesConverted": 32,
+  "nodesFallback": 0,
+  "nodesAbsorbed": 2,
+  "nodesSkipped": 0,
+  "unsupported": [],
+  "promoted": [
+    {
+      "id": "input-message",
+      "from": "frame",
+      "to": "input",
+      "reason": "named input or placeholder text"
+    },
+    {
+      "id": "btn-send",
+      "from": "frame",
+      "to": "button",
+      "reason": "named button"
+    }
+  ],
+  "absorbed": [
+    {
+      "id": "input-placeholder",
+      "parentId": "input-message",
+      "reason": "absorbed into input placeholder"
+    },
+    {
+      "id": "btn-send-text",
+      "parentId": "btn-send",
+      "reason": "absorbed into button content"
+    }
+  ],
+  "normalized": [],
+  "diagnostics": [
+    {
+      "severity": "note",
+      "code": "TOKEN_INFERRED_BY_VALUE",
+      "message": "#8462E8 → Brush.Brand.Purple (exact value match; node does not store tokenId)"
+    },
+    {
+      "severity": "note",
+      "code": "TOKEN_INFERRED_BY_VALUE",
+      "message": "#18161E → Brush.Neutral.Darkbg (exact value match; node does not store tokenId)"
+    },
+    {
+      "severity": "note",
+      "code": "TOKEN_INFERRED_BY_VALUE",
+      "message": "#23202C → Brush.Neutral.Surface (exact value match; node does not store tokenId)"
+    },
+    {
+      "severity": "note",
+      "code": "TOKEN_INFERRED_BY_VALUE",
+      "message": "#2E2A3A → Brush.Neutral.Cardbg (exact value match; node does not store tokenId)"
+    },
+    {
+      "severity": "note",
+      "code": "TOKEN_INFERRED_BY_VALUE",
+      "message": "#FAF7FD → Brush.Text.Primary (exact value match; node does not store tokenId)"
+    },
+    {
+      "severity": "note",
+      "code": "TOKEN_INFERRED_BY_VALUE",
+      "message": "#A49BB3 → Brush.Text.Secondary (exact value match; node does not store tokenId)"
+    }
+  ],
+  "warnings": [
+    "TOKEN_INFERRED_BY_VALUE: #8462E8 → Brush.Brand.Purple (exact value match; node does not store tokenId)",
+    "TOKEN_INFERRED_BY_VALUE: #18161E → Brush.Neutral.Darkbg (exact value match; node does not store tokenId)",
+    "TOKEN_INFERRED_BY_VALUE: #23202C → Brush.Neutral.Surface (exact value match; node does not store tokenId)",
+    "TOKEN_INFERRED_BY_VALUE: #2E2A3A → Brush.Neutral.Cardbg (exact value match; node does not store tokenId)",
+    "TOKEN_INFERRED_BY_VALUE: #FAF7FD → Brush.Text.Primary (exact value match; node does not store tokenId)",
+    "TOKEN_INFERRED_BY_VALUE: #A49BB3 → Brush.Text.Secondary (exact value match; node does not store tokenId)"
+  ]
+}

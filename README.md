@@ -1,4 +1,8 @@
-# Vellum
+# Vellum (Agent Bridge Edition)
+
+> **Fork Repository**: [linnnn89/Vellum-Agent-Bridge](https://github.com/linnnn89/Vellum-Agent-Bridge)  
+> Experimental Vellum fork for Vibe Coding, semantic UI specs and Vellum-to-WPF workflows.  
+> Upstream: [wieslawsoltes/Vellum](https://github.com/wieslawsoltes/Vellum)
 
 **A little more possible.** A local-first design editor built with plain HTML, CSS, JavaScript, and a WebGPU-first renderer. Version **0.1.0**.
 
@@ -6,9 +10,9 @@ The interface follows the familiar design-editor arrangement: pages and layers o
 
 ## GitHub Pages and CI
 
-**Editor:** https://wieslawsoltes.github.io/Vellum/  
-**Portable download:** https://wieslawsoltes.github.io/Vellum/Vellum.html  
-**Workflow:** [CI and GitHub Pages](https://github.com/wieslawsoltes/Vellum/actions/workflows/pages.yml)
+**Editor:** https://linnnn89.github.io/Vellum-Agent-Bridge/  
+**Portable download:** https://linnnn89.github.io/Vellum-Agent-Bridge/Vellum.html  
+**Workflow:** [CI and GitHub Pages](https://github.com/linnnn89/Vellum-Agent-Bridge/actions/workflows/pages.yml)
 
 Initial repository setup: **Settings → Pages → Build and deployment → Source → GitHub Actions**. This is required before the first deployment. No custom domain or long-lived deployment secret is needed. After enabling Pages, run the workflow manually or push to `main`.
 
@@ -25,6 +29,24 @@ python3 -m http.server 8080 --directory _site --bind 127.0.0.1
 ```
 
 The application itself still has no runtime package dependencies. Node.js is used only for CI syntax validation; Python builds the static artifact and drives optional browser tests.
+
+## Vellum → Semantic UI Spec → WPF
+
+This fork includes an experimental compiler at [`tools/vellum-wpf-bridge/`](tools/vellum-wpf-bridge/):
+
+```text
+.vellum  →  Semantic UI Spec  →  WPF/XAML
+```
+
+It keeps layout sizing (`fixed` / `fill`) separate from Vellum anchoring (`constraintH` / `constraintV`). Auto Layout with a main-axis fill becomes a Grid with star tracks; freeform frames fall back to Canvas.
+
+```sh
+cd tools/vellum-wpf-bridge
+$env:PYTHONPATH="src"; python -m vellum_wpf_bridge convert samples/tabletop-chat.vellum -o output
+python tests/run_tests.py
+```
+
+Design brief (with completion / deprecation status): [`初版设计.md`](初版设计.md). Tool usage: [`tools/vellum-wpf-bridge/README.md`](tools/vellum-wpf-bridge/README.md).
 
 ## Run
 

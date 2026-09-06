@@ -1,0 +1,72 @@
+{
+  "format": "vellum",
+  "version": 1,
+  "name": "Canary Gap",
+  "pageId": "page-gap",
+  "tokens": { "colors": [] },
+  "assets": {},
+  "pages": [
+    {
+      "id": "page-gap",
+      "name": "Gap",
+      "nodes": [
+        {
+          "id": "root",
+          "type": "frame",
+          "name": "MainWindow",
+          "parentId": null,
+          "x": 0,
+          "y": 0,
+          "w": 804,
+          "h": 200,
+          "rotation": 0,
+          "opacity": 1,
+          "fill": "#111111",
+          "layout": "horizontal",
+          "gap": 12,
+          "padding": 0
+        },
+        {
+          "id": "left",
+          "type": "frame",
+          "name": "LeftPane",
+          "parentId": "root",
+          "x": 0,
+          "y": 0,
+          "w": 260,
+          "h": 200,
+          "rotation": 0,
+          "opacity": 1,
+          "fill": "#222222"
+        },
+        {
+          "id": "mid",
+          "type": "frame",
+          "name": "CenterPane",
+          "parentId": "root",
+          "x": 272,
+          "y": 0,
+          "w": 260,
+          "h": 200,
+          "rotation": 0,
+          "opacity": 1,
+          "fill": "#333333",
+          "constraintH": "stretch"
+        },
+        {
+          "id": "right",
+          "type": "frame",
+          "name": "RightPane",
+          "parentId": "root",
+          "x": 544,
+          "y": 0,
+          "w": 260,
+          "h": 200,
+          "rotation": 0,
+          "opacity": 1,
+          "fill": "#222222"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <SolidColorBrush x:Key="Brush.Brand.Purple" Color="#8462E8"/>
+    <SolidColorBrush x:Key="Brush.Neutral.Cardbg" Color="#2E2A3A"/>
+    <SolidColorBrush x:Key="Brush.Neutral.Darkbg" Color="#18161E"/>
+    <SolidColorBrush x:Key="Brush.Neutral.Surface" Color="#23202C"/>
+    <SolidColorBrush x:Key="Brush.Text.Primary" Color="#FAF7FD"/>
+    <SolidColorBrush x:Key="Brush.Text.Secondary" Color="#A49BB3"/>
+</ResourceDictionary>
