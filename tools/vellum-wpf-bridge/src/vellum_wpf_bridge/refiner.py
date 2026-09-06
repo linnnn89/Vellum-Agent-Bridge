@@ -204,6 +204,21 @@ class SafeAgentRefiner:
                 )
             _validate_patch_value(path, op["value"], idx, node_id)
 
+        # A syntactically allowed patch must also leave a valid IR. Validate the
+        # candidate here so refine-validate and refine-apply agree, without
+        # modifying the caller's document or logging any values.
+        candidate = deepcopy(spec_data)
+        candidate_nodes = _collect_node_map(candidate.get("root"))
+        for op in operations:
+            target = candidate_nodes[op["nodeId"]]
+            if op["path"] == "name":
+                target["name"] = op["value"]
+            else:
+                target.setdefault("props", {})[op["path"][len("props."):]] = op["value"]
+        try:
+            validate_ui_spec_dict(candidate)
+        except ValueError as e:
+            raise PatchValidationError(f"Invalid refined spec: {e}") from e
         return [f"Verified {len(operations)} patch operations successfully."]
 
     def apply_patch(

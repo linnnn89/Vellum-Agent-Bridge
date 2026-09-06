@@ -113,3 +113,13 @@
 - 验证：Bridge 74/74 通过、无跳过，包含 WPF 实际图片解码、AutomationProperties 值、字面量/ARGB、源图片 convert→独立 generate 和恶意补丁。原有 Refiner 测试 fixture 的字符串轨道改成契约要求的数字轨道，保持所有原断言；首次严格基底校验因此暴露该旧 fixture，修正后通过。Linux 仅跳过 Windows WPF 运行时检查，纯 Python 安全测试照常执行。
 - 编辑器 CI：scripts/ci.py 首次因 Playwright 配套浏览器缺失而失败；使用现有 CHROMIUM_EXECUTABLE 入口和本机 Chrome 独立测试上下文重跑，JS 语法/构建与 37 项浏览器检查全部通过（Canvas 2D）。没有下载浏览器；这不等于远端 GitHub Actions 已运行。
 - 反证自审：报告脱敏不等于 spec 脱敏，已明确区分；有 Source 不等于图片可读，新增真实 WPF 解码；XML 中有 AutomationProperties 不等于运行时生效，新增实际属性读取断言。现有样例/golden 未改写。待办仅为用户决定的 Git/远端交付；SVG/WebP 转码不在此次实现内。
+
+
+## 2026-09-06 23:46（北京时间）— 统一手写模型与 JSON 的严格 token 契约
+
+- 授权：用户确认统一严格拒绝、使用边界重新验证、保留发射层上下文编码的方案。当前检出 5353af5 已含标题/promptText/convert 空目录修复，本轮未改编辑器或上述既有修复。
+- 改动：移除 strict_tokens 开关；JSON 与模型调用相同校验规则，颜色 predicate 共用。UiSpec.to_dict 在省略字段前校验原始模型，阻断构造后修改及负数样式被序列化过滤的绕过。生成器入口仍在资源状态修改前校验；发射层遇到非法 Command/颜色改为明确 ValueError，不再成功但丢属性。资源 XAML 输出验证 key 和颜色后使用规范化颜色。
+- 边界：refine-validate 校验候选结果，与 apply 对齐且不修改原文档；convert 在验证、生成准备和 spec 序列化成功后写出，refine-apply 延后 mkdir。错误不回显非法值，资源值报错也不拼入用户资源键。保留合法可选字段/默认值和 XAML 字面量规则，无新增依赖或公开宽松模式。
+- 验证：py -3.10 tools/vellum-wpf-bridge/tests/run_tests.py，82/82 通过、0 跳过（12.051 秒）。新增 8 项测试：JSON/模型/导出/两种生成入口一致拒绝、多组 token、修改后复验、导出不隐藏负数、资源状态不变、发射层独立拦截、合法文本/命令/ARGB 往返、补丁验证与应用一致、失败目录与已有输出保护。此前两个“丢弃非法值”测试升级为必须抛异常，未放宽测试。
+- 反证自审：只在构造时校验挡不住 props 后改；只校验 to_dict 结果挡不住它省略非法 style 值。针对两者直接检查当前原始模型并加回归断言。WPF 真实解析、图片解码、无障碍、布局和 golden 全部通过。本轮未修改前端，未重跑浏览器测试。
+- 交付边界：过去静默丢属性的手写模型调用现在会报错，这是用户确认的兼容性变化；不承诺任意宿主 Python 代码受沙箱限制，也不声称磁盘写入失败有多文件原子回滚。未提交、推送或运行远端 Actions。

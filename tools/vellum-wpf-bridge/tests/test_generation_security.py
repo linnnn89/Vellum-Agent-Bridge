@@ -8,15 +8,17 @@ import shutil
 import subprocess
 import tempfile
 import unittest
+from unittest.mock import patch
 import sys
 import xml.etree.ElementTree as ET
 
-from vellum_wpf_bridge.cli import generate
+from vellum_wpf_bridge.cli import generate, convert, refine_apply
 from vellum_wpf_bridge.models import UiSpec, UiNode, UiLayout, UiStyle
 from vellum_wpf_bridge.refiner import SafeAgentRefiner
 from vellum_wpf_bridge.resources import ResourceManager
 from vellum_wpf_bridge.semantic_mapper import SemanticMapper
 from vellum_wpf_bridge.spec_validator import UiSpecValidationError
+from vellum_wpf_bridge.spec_validator import validate_ui_spec_model
 from vellum_wpf_bridge.utils import fmt_length, normalize_ir_color
 from vellum_wpf_bridge.vellum_adapter import VellumDocumentAdapter
 from vellum_wpf_bridge.wpf_generator import WpfGenerator
@@ -24,6 +26,117 @@ from test_review_findings import SAMPLE_SPEC, _patch
 
 
 class TestGenerationSecurity(unittest.TestCase):
+    def test_strict_tokens_match_across_json_model_export_and_generators(self):
+        cases = (
+            ('command', '{Binding private-payload}'),
+            ('command', ''),
+            ('background', '{x:Null}'),
+            ('background', 'red'),
+            ('foreground', ' #123456'),
+            ('borderColor', '123456'),
+            ('resource', '#12345'),
+        )
+        for field, bad in cases:
+            data = deepcopy(SAMPLE_SPEC)
+            model = UiSpec.from_dict(data)
+            # Both were valid before an ordinary in-memory mutation.
+            if field == 'command':
+                data['root']['props'][field] = bad
+                model.root.props[field] = bad
+            elif field == 'resource':
+                data['resources']['Brush.Test'] = bad
+                model.resources['Brush.Test'] = bad
+            else:
+                data['root'].setdefault('style', {})[field] = bad
+                setattr(model.root.style, 'border_color' if field == 'borderColor' else field, bad)
+            checks = (lambda: UiSpec.from_dict(data), lambda: validate_ui_spec_model(model),
+                      model.to_dict, lambda: WpfGenerator().generate_all(model),
+                      lambda: WpfGenerator().generate_main_window_xaml(model))
+            for check in checks:
+                with self.subTest(field=field, value=bad, check=check), self.assertRaises(UiSpecValidationError) as error:
+                    check()
+                if bad:
+                    self.assertNotIn(bad, str(error.exception))
+
+    def test_export_rejects_invalid_values_before_lossy_to_dict(self):
+        model = UiSpec(root=UiNode(id='root', type='panel', style=UiStyle(border_thickness=-1)))
+        with self.assertRaisesRegex(UiSpecValidationError, 'borderThickness'):
+            model.to_dict()
+
+    def test_invalid_model_does_not_change_generator_resource_state(self):
+        generator = WpfGenerator()
+        good = UiSpec.from_dict(SAMPLE_SPEC)
+        before_output = generator.generate_all(good)
+        before_state = deepcopy(generator.rm.__dict__)
+        bad = UiSpec.from_dict(SAMPLE_SPEC)
+        bad.resources['Brush.WouldBeAdded'] = '#123456'
+        bad.root.props['command'] = '{Binding private-payload}'
+        with self.assertRaises(UiSpecValidationError):
+            generator.generate_all(bad)
+        self.assertEqual(generator.rm.__dict__, before_state)
+        self.assertEqual(generator.generate_all(good), before_output)
+
+    def test_emission_defenses_reject_bad_tokens_even_without_full_spec(self):
+        manager = ResourceManager()
+        with self.assertRaises(ValueError):
+            manager.get_color_reference('{x:Null}')
+        manager.key_to_color['Brush.Test'] = '#123456"/>'
+        with self.assertRaises(ValueError):
+            WpfGenerator(resource_manager=manager).generate_resources_xaml()
+
+    def test_valid_command_color_and_literal_survive_all_entry_points(self):
+        model = UiSpec(root=UiNode(id='button', type='button',
+            props={'text': '{Binding Literal}', 'command': 'SendCommand'},
+            style=UiStyle(background='#80123456')))
+        raw = model.to_dict()
+        parsed = UiSpec.from_dict(raw)
+        self.assertEqual(parsed.to_dict(), raw)
+        direct = WpfGenerator().generate_all(model)
+        self.assertEqual(direct, WpfGenerator().generate_all(parsed))
+        self.assertIn('Content="{}{Binding Literal}"', direct['MainWindow.xaml'])
+        self.assertIn('Command="{Binding SendCommand}"', direct['MainWindow.xaml'])
+        self.assertIn('#80123456', direct['MainWindow.xaml'])
+
+    def test_patch_validation_and_application_agree_on_invalid_result(self):
+        for payload in ('{Binding secret}', 'private-text\x00'):
+            path = 'props.command' if payload.startswith('{') else 'props.text'
+            operation = _patch(SAMPLE_SPEC, path, payload)
+            for action in (SafeAgentRefiner().validate_patch, SafeAgentRefiner().apply_patch):
+                with self.assertRaises(ValueError) as error:
+                    action(SAMPLE_SPEC, operation)
+                self.assertNotIn(payload, str(error.exception))
+
+    def test_invalid_mapped_model_fails_before_creating_or_overwriting_outputs(self):
+        bad = UiSpec.from_dict(SAMPLE_SPEC)
+        bad.root.props['command'] = '{Binding private-payload}'
+        sample = Path(__file__).parent.parent / 'samples/tabletop-chat.vellum'
+        with tempfile.TemporaryDirectory() as temp:
+            output = Path(temp) / 'out'
+            for existing in (False, True):
+                if existing:
+                    output.mkdir()
+                    (output / 'ui-spec.json').write_text('existing spec', encoding='utf-8')
+                    (output / 'MainWindow.xaml').write_text('existing xaml', encoding='utf-8')
+                errors = io.StringIO()
+                with patch('vellum_wpf_bridge.cli.SemanticMapper.map_document', return_value=bad), \
+                        contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(errors):
+                    self.assertEqual(convert(str(sample), str(output)), 1)
+                self.assertNotIn('private-payload', errors.getvalue())
+                if existing:
+                    self.assertEqual((output / 'ui-spec.json').read_text(), 'existing spec')
+                    self.assertEqual((output / 'MainWindow.xaml').read_text(), 'existing xaml')
+                else:
+                    self.assertFalse(output.exists())
+
+    def test_invalid_patch_does_not_create_output_directory(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root / 'spec.json').write_text(json.dumps(SAMPLE_SPEC), encoding='utf-8')
+            (root / 'patch.json').write_text(json.dumps(_patch(SAMPLE_SPEC, 'props.command', '{Binding secret}')), encoding='utf-8')
+            with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+                self.assertEqual(refine_apply(str(root / 'spec.json'), str(root / 'patch.json'), str(root / 'out')), 1)
+            self.assertFalse((root / 'out').exists())
+
     def test_agent_text_patch_is_a_literal(self):
         for payload in ('{Binding Steal}', '{StaticResource Missing}', '{}already escaped',
                         ' {Binding Steal}', '{x:Null}', '{"<&'):

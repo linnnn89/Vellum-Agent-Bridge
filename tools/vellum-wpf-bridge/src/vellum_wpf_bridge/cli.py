@@ -81,6 +81,9 @@ def convert(
             spec = UiSpec.from_dict(refined)
         else:
             spec = UiSpec.from_dict(spec.to_dict())
+        generator = WpfGenerator(report=report)
+        generated_files = {} if spec_only else generator.generate_all(spec, app_namespace=app_namespace)
+        spec_data = spec.to_dict()
     except (ValueError, OSError) as e:
         print(f"Error validating/refining converted spec: {e}", file=sys.stderr)
         return 1
@@ -92,7 +95,7 @@ def convert(
     # Save ui-spec.json
     ui_spec_file = out_path / "ui-spec.json"
     with open(ui_spec_file, "w", encoding="utf-8") as f:
-        json.dump(spec.to_dict(), f, indent=2, ensure_ascii=False)
+        json.dump(spec_data, f, indent=2, ensure_ascii=False)
     print(f"      Saved: {ui_spec_file}")
 
     if spec_only:
@@ -104,8 +107,6 @@ def convert(
         return 0
 
     print("[3/4] Generating WPF/XAML markup directly from Semantic UI Spec...")
-    generator = WpfGenerator(report=report)
-    generated_files = generator.generate_all(spec, app_namespace=app_namespace)
     for note in generator.rm.inferred_token_notes:
         report.add_diagnostic("note", "TOKEN_INFERRED_BY_VALUE", note)
 
@@ -207,7 +208,6 @@ def refine_apply(
         return 1
 
     out_path = Path(output_dir)
-    out_path.mkdir(parents=True, exist_ok=True)
 
     try:
         with open(s_path, "r", encoding="utf-8") as f:
@@ -217,6 +217,7 @@ def refine_apply(
         refiner = SafeAgentRefiner()
         refined_spec, report = refiner.apply_patch(spec_data, patch_data)
 
+        out_path.mkdir(parents=True, exist_ok=True)
         out_spec_file = out_path / output_spec
         with open(out_spec_file, "w", encoding="utf-8") as f:
             json.dump(refined_spec, f, indent=2, ensure_ascii=False)

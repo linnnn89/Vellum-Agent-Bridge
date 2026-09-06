@@ -3,7 +3,7 @@
 import re
 from typing import Dict, List, Optional, Set, Tuple
 from .models import UiNode, UiSpec, VellumDocument
-from .utils import is_dotted_identifier, normalize_hex_color, normalize_ir_color
+from .utils import is_dotted_identifier, normalize_hex_color, normalize_ir_color, require_ir_color
 
 
 class ResourceManager:
@@ -26,7 +26,7 @@ class ResourceManager:
         if not spec or not spec.resources:
             return
         for key, val in spec.resources.items():
-            val_norm = normalize_ir_color(val)
+            val_norm = require_ir_color(val)
             if val_norm:
                 res_key = key if key.startswith("Brush.") else self.token_name_to_resource_key(key)
                 if not is_dotted_identifier(res_key):
@@ -87,11 +87,9 @@ class ResourceManager:
 
     def get_color_reference(self, color_hex: Optional[str]) -> Optional[str]:
         """Return {StaticResource Key} if color is a registered resource, else raw hex."""
-        if not color_hex:
+        if color_hex is None:
             return None
-        norm = normalize_ir_color(color_hex)
-        if not norm:
-            return None
+        norm = require_ir_color(color_hex)
         key = self.color_to_key.get(norm)
         if key and is_dotted_identifier(key):
             return f"{{StaticResource {key}}}"
@@ -102,9 +100,8 @@ class ResourceManager:
         entries = []
         for key, color in sorted(self.key_to_color.items()):
             if not is_dotted_identifier(key):
-                continue
-            if normalize_ir_color(color) is None:
-                continue
+                raise ValueError("Resource key: expected dotted identifier")
+            color = require_ir_color(color)
             entries.append(f'{indent}<SolidColorBrush x:Key="{key}" Color="{color}"/>')
         return entries
 

@@ -131,7 +131,11 @@ vellum-wpf refine-apply output/ui-spec.json path/to/patch.json -o output-refined
 
 图片资源使用 `assets: {"pic1": "data:image/png;base64,..."}`，节点使用 `props.assetId: "pic1"`。源 `.vellum` 的 assets 会保留到 IR，生成器导出 `Assets/<内容哈希>.<扩展名>` 并写入 Image.Source。支持 PNG/JPEG/GIF/BMP/ICO/TIFF，单图不超过 20 MiB、总计不超过 100 MiB；缺失图片、SVG/WebP、路径和外部 URL 明确报错，不自动读取或下载。将生成结果放入 WPF 工程时，需要将 Assets 作为内容文件复制到输出目录，例如 `<Content Include="Assets\**\*" CopyToOutputDirectory="PreserveNewest" />`。`generate_all()` 返回值中 XAML 为字符串、图片为 bytes；CLI 会分别写出。
 
-JSON IR 的 Command 必须是 ASCII 标识符，样式/资源颜色必须是带 `#` 的三、六或八位十六进制；无效值在读取和补丁应用阶段拒绝。直接构造模型的生成器仍保留安全丢弃无效 Command/颜色的防御。
+JSON IR 和手写模型统一遵循严格 token 契约：Command 必须是 ASCII 标识符，样式/资源颜色必须是带 `#` 的三、六或八位十六进制。没有宽松 token 开关。`UiSpec(...)` 仍可分步构造，但 `from_dict()`、生成器两个公开模型入口及 `UiSpec.to_dict()` 导出都会验证当前完整值；构造后修改也不能免检。合法默认值和可选字段保持现有规则。
+
+兼容性变化：过去直接构造模型时，无效 Command/颜色会被静默丢弃；现在生成/导出抛出 ValueError（完整 IR 校验使用其子类 UiSpecValidationError）。移除未设置的字段或填写合法值，不要用空 Command 或非 hex 颜色表示缺省。发射层仍保留独立检查和 XML/XAML 上下文转义；`text="{Binding Literal}"` 是合法文案，不会按 Command 规则拒绝。
+
+`refine-validate` 同时校验补丁候选结果，与 `refine-apply` 的结果契约一致。CLI 在验证和生成准备成功后才写出；校验/生成失败不会新建输出目录或覆盖已有产物。此保证不包含磁盘故障等写入阶段错误的多文件事务回滚。
 
 ---
 

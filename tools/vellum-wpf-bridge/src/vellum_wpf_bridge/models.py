@@ -354,6 +354,8 @@ class UiSpec:
     assets: Dict[str, str] = field(default_factory=dict)
 
     def to_dict(self) -> Dict[str, Any]:
+        from .spec_validator import validate_ui_spec_model
+        validate_ui_spec_model(self)
         return {
             "version": self.version,
             "name": self.name,

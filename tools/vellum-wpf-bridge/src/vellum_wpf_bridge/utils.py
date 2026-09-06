@@ -111,6 +111,19 @@ def escape_xml_comment(text: str) -> str:
     return re.sub(r"-{2,}", lambda m: "&#45;" * len(m[0]), escape_xml(text))
 
 
+def is_ir_color(value: Any) -> bool:
+    """One shared token contract for IR validation and XAML emission."""
+    return isinstance(value, str) and re.fullmatch(
+        r"#[0-9a-fA-F]{3}(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{5})?", value
+    ) is not None
+
+
+def require_ir_color(value: str) -> str:
+    if not is_ir_color(value):
+        raise ValueError("Color: expected hex token (#RGB, #RRGGBB, #AARRGGBB)")
+    return normalize_ir_color(value)
+
+
 def normalize_ir_color(color_str: Optional[str]) -> Optional[str]:
     """IR colors are #RGB, #RRGGBB or #AARRGGBB; never rotate alpha again."""
     if not isinstance(color_str, str):

@@ -3,7 +3,7 @@
 from dataclasses import fields, is_dataclass
 import math
 import re
-from .utils import is_binding_identifier
+from .utils import is_binding_identifier, is_ir_color
 from .assets import export_assets
 
 
@@ -49,7 +49,7 @@ def _enum_fields(data, path, rules):
                      f"{path}.{key}", repr(choices))
 
 
-def validate_ui_spec_dict(data, *, allow_empty_root=False, strict_tokens=True):
+def validate_ui_spec_dict(data, *, allow_empty_root=False):
     _object(data, '$')
     for key in ('version', 'name', 'type', 'root'):
         _require(key in data, '$', f"required field {key}")
@@ -63,9 +63,8 @@ def validate_ui_spec_dict(data, *, allow_empty_root=False, strict_tokens=True):
     _object(resources, '$.resources')
     for key, value in resources.items():
         _string(key, '$.resources.key')
-        _string(value, f'$.resources.{key}')
-        if strict_tokens:
-            _require(re.fullmatch(r'#[0-9a-fA-F]{3}(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{5})?', value) is not None, '$.resources', 'hex color (#RGB, #RRGGBB, #AARRGGBB)')
+        _string(value, '$.resources.value')
+        _require(is_ir_color(value), '$.resources', 'hex color (#RGB, #RRGGBB, #AARRGGBB)')
 
     seen = set()
     _, asset_refs = export_assets(data.get('assets', {}))
@@ -121,10 +120,9 @@ def validate_ui_spec_dict(data, *, allow_empty_root=False, strict_tokens=True):
         for key in ('background', 'foreground', 'borderColor', 'fontFamily', 'fontStyle', 'textAlign'):
             if key in style:
                 _string(style[key], f'{path}.style.{key}')
-        if strict_tokens:
-            for key in ('background', 'foreground', 'borderColor'):
-                if key in style:
-                    _require(re.fullmatch(r'#[0-9a-fA-F]{3}(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{5})?', style[key]) is not None, f'{path}.style.{key}', 'hex color (#RGB, #RRGGBB, #AARRGGBB)')
+        for key in ('background', 'foreground', 'borderColor'):
+            if key in style:
+                _require(is_ir_color(style[key]), f'{path}.style.{key}', 'hex color (#RGB, #RRGGBB, #AARRGGBB)')
         for key in ('borderThickness', 'cornerRadius', 'opacity', 'fontSize'):
             if key in style:
                 _number(style[key], f'{path}.style.{key}', 0, 1 if key == 'opacity' else None)
@@ -140,7 +138,7 @@ def validate_ui_spec_dict(data, *, allow_empty_root=False, strict_tokens=True):
         for key in ('text', 'placeholder', 'command', 'icon', 'assetId', 'xName', 'tooltip', 'accessibleName', 'helpText', 'semanticRole'):
             if key in props:
                 _string(props[key], f'{path}.props.{key}')
-        if strict_tokens and 'command' in props:
+        if 'command' in props:
             _require(is_binding_identifier(props['command']), path + '.props.command', 'ASCII identifier')
         if value['type'] == 'image':
             _require(props.get('assetId') in asset_refs, path + '.props.assetId', 'existing embedded image asset')
@@ -168,4 +166,4 @@ def validate_ui_spec_model(spec):
         if isinstance(value, list):
             return [raw(v, depth + 1) for v in value]
         return value
-    validate_ui_spec_dict(raw(spec), allow_empty_root=True, strict_tokens=False)
+    validate_ui_spec_dict(raw(spec), allow_empty_root=True)

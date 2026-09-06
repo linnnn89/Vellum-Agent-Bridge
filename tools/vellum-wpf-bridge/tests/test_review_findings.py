@@ -83,9 +83,8 @@ class TestCommandBindingMustBeIdentifier(unittest.TestCase):
                 layout=UiLayout(width=100, height=32, width_mode="fixed", height_mode="fixed"),
             ),
         )
-        xaml = WpfGenerator().generate_main_window_xaml(spec)
-        self.assertNotIn('Background="{x:Null}', xaml)
-        self.assertNotIn("Command=\"{Binding Foo}", xaml)
+        with self.assertRaisesRegex(ValueError, "props.command"):
+            WpfGenerator().generate_main_window_xaml(spec)
 
 
 class TestSha256MustBeCanonicalOnly(unittest.TestCase):
@@ -116,8 +115,8 @@ class TestGenerateSanitizesUntrustedSpec(unittest.TestCase):
                 style=UiStyle(background='#112233" /><Button Content="pwned'),
             ),
         )
-        xaml = WpfGenerator().generate_main_window_xaml(spec)
-        self.assertNotIn('content="pwned', xaml.lower())
+        with self.assertRaisesRegex(ValueError, "style.background"):
+            WpfGenerator().generate_main_window_xaml(spec)
 
 
 class TestCiWorkflowMatchesThisFork(unittest.TestCase):

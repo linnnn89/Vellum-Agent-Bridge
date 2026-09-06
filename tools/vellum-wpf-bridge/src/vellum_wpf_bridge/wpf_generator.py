@@ -251,7 +251,9 @@ class WpfGenerator:
             attrs.append(f'x:Name="{pascal_name}"')
         attrs.append(f'Content="{escape_xaml_literal(node.props.get("text", "Button"))}"')
         cmd = node.props.get("command")
-        if is_binding_identifier(cmd):
+        if "command" in node.props:
+            if not is_binding_identifier(cmd):
+                raise ValueError("props.command: expected ASCII identifier")
             attrs.append(f'Command="{{Binding {cmd}}}"')
         attrs.extend(self._slot_attrs(node, ctx))
         attrs.extend(self._size_attrs(node, ctx))
