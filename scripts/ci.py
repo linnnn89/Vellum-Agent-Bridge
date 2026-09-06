@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import functools
 import http.server
+import os
 import shutil
 import subprocess
 import sys
@@ -22,6 +23,11 @@ def run(*args: str) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--skip-browser", action="store_true", help="Only check syntax and build")
+    parser.add_argument(
+        "--subpath",
+        default=None,
+        help="Project subpath for Pages testing (defaults to GITHUB_REPOSITORY repo name or 'Vellum')",
+    )
     args = parser.parse_args()
     node = shutil.which("node")
     if not node:
@@ -33,14 +39,21 @@ def main() -> None:
     run(sys.executable, "scripts/build_site.py")
     if args.skip_browser:
         return
+
+    repo_subpath = args.subpath
+    if not repo_subpath:
+        env_repo = os.environ.get("GITHUB_REPOSITORY", "")
+        repo_subpath = env_repo.split("/")[-1] if env_repo else "Vellum"
+    repo_subpath = repo_subpath.strip("/") or "Vellum"
+
     with tempfile.TemporaryDirectory(prefix="vellum-ci-") as tmp:
-        shutil.copytree(ROOT / "_site", Path(tmp) / "Vellum")
+        shutil.copytree(ROOT / "_site", Path(tmp) / repo_subpath)
         handler = functools.partial(http.server.SimpleHTTPRequestHandler, directory=tmp)
         server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), handler)
         thread = threading.Thread(target=server.serve_forever, daemon=True)
         thread.start()
         try:
-            url = f"http://127.0.0.1:{server.server_port}/Vellum/?canvas"
+            url = f"http://127.0.0.1:{server.server_port}/{repo_subpath}/?canvas"
             run(sys.executable, "tests/smoke.py", "--url", url,
                 "--expect-backend", "Canvas 2D", "--output-dir", "test-results")
         finally:

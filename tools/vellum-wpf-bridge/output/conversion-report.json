@@ -36,40 +36,40 @@
     {
       "severity": "note",
       "code": "TOKEN_INFERRED_BY_VALUE",
-      "message": "#8462E8 → Brush.Brand.Purple (exact value match; node does not store tokenId)"
+      "message": "#8462E8 → Brush.Brand.Purple (from UiSpec.resources)"
     },
     {
       "severity": "note",
       "code": "TOKEN_INFERRED_BY_VALUE",
-      "message": "#18161E → Brush.Neutral.Darkbg (exact value match; node does not store tokenId)"
+      "message": "#18161E → Brush.Neutral.Darkbg (from UiSpec.resources)"
     },
     {
       "severity": "note",
       "code": "TOKEN_INFERRED_BY_VALUE",
-      "message": "#23202C → Brush.Neutral.Surface (exact value match; node does not store tokenId)"
+      "message": "#23202C → Brush.Neutral.Surface (from UiSpec.resources)"
     },
     {
       "severity": "note",
       "code": "TOKEN_INFERRED_BY_VALUE",
-      "message": "#2E2A3A → Brush.Neutral.Cardbg (exact value match; node does not store tokenId)"
+      "message": "#2E2A3A → Brush.Neutral.Cardbg (from UiSpec.resources)"
     },
     {
       "severity": "note",
       "code": "TOKEN_INFERRED_BY_VALUE",
-      "message": "#FAF7FD → Brush.Text.Primary (exact value match; node does not store tokenId)"
+      "message": "#FAF7FD → Brush.Text.Primary (from UiSpec.resources)"
     },
     {
       "severity": "note",
       "code": "TOKEN_INFERRED_BY_VALUE",
-      "message": "#A49BB3 → Brush.Text.Secondary (exact value match; node does not store tokenId)"
+      "message": "#A49BB3 → Brush.Text.Secondary (from UiSpec.resources)"
     }
   ],
   "warnings": [
-    "TOKEN_INFERRED_BY_VALUE: #8462E8 → Brush.Brand.Purple (exact value match; node does not store tokenId)",
-    "TOKEN_INFERRED_BY_VALUE: #18161E → Brush.Neutral.Darkbg (exact value match; node does not store tokenId)",
-    "TOKEN_INFERRED_BY_VALUE: #23202C → Brush.Neutral.Surface (exact value match; node does not store tokenId)",
-    "TOKEN_INFERRED_BY_VALUE: #2E2A3A → Brush.Neutral.Cardbg (exact value match; node does not store tokenId)",
-    "TOKEN_INFERRED_BY_VALUE: #FAF7FD → Brush.Text.Primary (exact value match; node does not store tokenId)",
-    "TOKEN_INFERRED_BY_VALUE: #A49BB3 → Brush.Text.Secondary (exact value match; node does not store tokenId)"
+    "TOKEN_INFERRED_BY_VALUE: #8462E8 → Brush.Brand.Purple (from UiSpec.resources)",
+    "TOKEN_INFERRED_BY_VALUE: #18161E → Brush.Neutral.Darkbg (from UiSpec.resources)",
+    "TOKEN_INFERRED_BY_VALUE: #23202C → Brush.Neutral.Surface (from UiSpec.resources)",
+    "TOKEN_INFERRED_BY_VALUE: #2E2A3A → Brush.Neutral.Cardbg (from UiSpec.resources)",
+    "TOKEN_INFERRED_BY_VALUE: #FAF7FD → Brush.Text.Primary (from UiSpec.resources)",
+    "TOKEN_INFERRED_BY_VALUE: #A49BB3 → Brush.Text.Secondary (from UiSpec.resources)"
   ]
 }

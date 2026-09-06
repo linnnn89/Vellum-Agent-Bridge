@@ -21,6 +21,22 @@ class ResourceManager:
         self.inferred_token_keys: Set[str] = set()
         self.inferred_token_notes: List[str] = []
 
+    def load_from_spec(self, spec: UiSpec):
+        """Load resources defined directly in UiSpec.resources (self-contained IR)."""
+        if not spec or not spec.resources:
+            return
+        for key, val in spec.resources.items():
+            val_norm = normalize_hex_color(val)
+            if val_norm:
+                res_key = key if key.startswith("Brush.") else self.token_name_to_resource_key(key)
+                if val_norm not in self.color_to_key:
+                    self.color_to_key[val_norm] = res_key
+                    self.key_to_color[res_key] = val_norm
+                    self.inferred_token_keys.add(res_key)
+                    self.inferred_token_notes.append(
+                        f"{val_norm} → {res_key} (from UiSpec.resources)"
+                    )
+
     def extract_from_document_tokens(self, doc: VellumDocument):
         """Extract design tokens defined in Vellum document (if present)."""
         tokens = doc.tokens or {}
@@ -29,7 +45,7 @@ class ResourceManager:
             name = item.get("name", "")
             val = normalize_hex_color(item.get("value"))
             if val and name:
-                key = self._name_to_resource_key(name)
+                key = self.token_name_to_resource_key(name)
                 if val not in self.color_to_key:
                     self.color_to_key[val] = key
                     self.key_to_color[key] = val
@@ -37,6 +53,7 @@ class ResourceManager:
                     self.inferred_token_notes.append(
                         f"{val} → {key} (exact value match; node does not store tokenId)"
                     )
+
 
     def collect_colors_from_tree(self, root: UiNode):
         """Walk UI Spec tree to count color occurrences."""
@@ -79,7 +96,8 @@ class ResourceManager:
             entries.append(f'{indent}<SolidColorBrush x:Key="{key}" Color="{color}"/>')
         return entries
 
-    def _name_to_resource_key(self, token_name: str) -> str:
+    @staticmethod
+    def token_name_to_resource_key(token_name: str) -> str:
         # e.g. "Brand / Iris" -> "Brush.Brand.Iris"
         parts = re.split(r"[/_-]+", token_name)
         cleaned_parts = []
@@ -90,3 +108,7 @@ class ResourceManager:
         if cleaned_parts:
             return "Brush." + ".".join(cleaned_parts)
         return f"Brush.{token_name.replace(' ', '')}"
+
+    def _name_to_resource_key(self, token_name: str) -> str:
+        return self.token_name_to_resource_key(token_name)
+

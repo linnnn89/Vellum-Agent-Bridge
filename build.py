@@ -5,7 +5,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 html = (ROOT / 'index.html').read_text(encoding="utf-8")
 css = (ROOT / 'styles.css').read_text(encoding="utf-8")
-modules = ['document.js', 'renderer.js', 'icons.js', 'svg.js', 'app.js']
+modules = ['i18n.js', 'document.js', 'renderer.js', 'icons.js', 'svg.js', 'app.js']
 code = []
 for name in modules:
     text = (ROOT / 'src' / name).read_text(encoding="utf-8")

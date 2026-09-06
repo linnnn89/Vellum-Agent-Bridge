@@ -2,18 +2,20 @@ import { DocumentModel, History, node, uid, clamp, point, inverse, multiply, ide
 import { Renderer, fontSpec, layoutText, displayText, pathFor } from './renderer.js';
 import { icon, hydrateIcons } from './icons.js';
 import { exportSVG } from './svg.js';
+import { i18n, t } from './i18n.js';
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const fmt = n => Math.round(n * 100) / 100;
 const round = n => Math.round(n * 10) / 10;
 const isInput = e => e instanceof HTMLElement && (e.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(e.tagName));
-const defaultOptions = { grid: false, snap: true, rulers: false, theme: 'dark' };
+const defaultOptions = { grid: false, snap: true, rulers: false, theme: 'dark', language: 'zh-CN' };
 let options = { ...defaultOptions };
 try {
     Object.assign(options, JSON.parse(localStorage.getItem('vellum-options') || '{}'));
 }
 catch { }
 document.documentElement.dataset.theme = options.theme;
+i18n.init(options.language);
 let storageDB = null, storageMode = 'IndexedDB', saveTimer, toastTimer;
 async function openDB() {
     try {
@@ -39,20 +41,24 @@ try {
 }
 catch (e) {
     console.warn('Saved file could not be restored', e);
-    toast('Saved file could not be restored. Your starter document is open.');
+    toast(t('toasts.savedFileRestoredWarn'));
 }
 const doc = new DocumentModel(initial), history = new History(doc);
 const state = { selection: new Set(), expanded: new Set(), tool: 'select', camera: { x: 60, y: 70, zoom: .6 }, pageViews: new Map(), hover: null, gesture: null, space: false, pen: [], penHover: null, pathEdit: null, guides: [], marquee: null, inspectorTab: 'design', leftTab: 'layers', editing: null, clipboard: null, pointers: new Map(), pinch: null, previewIndex: 0, previewFrames: [], selectionVersion: 0, dirty: false };
 const area = $('#canvas-area'), overlay = $('#overlay'), octx = overlay.getContext('2d');
 let scheduled = false, lastInspector = 0, uiQueued = false;
-const renderer = new Renderer($('#scene'), doc, status => { $('#engine-label').textContent = status === 'WebGPU' ? 'WebGPU accelerated' : status === 'Canvas 2D' ? 'Canvas 2D fallback' : status; $('#engine-label').title = status === 'WebGPU' ? 'Shapes: instanced GPU quads. Text and paths: cached raster atlas.' : renderer?.gpuError || status; }, () => invalidate());
+const renderer = new Renderer($('#scene'), doc, status => {
+    const label = status === 'WebGPU' ? t('leftPanel.webgpuBackend') : status === 'Canvas 2D' ? t('leftPanel.canvasBackend') : status;
+    $('#engine-label').textContent = label;
+    $('#engine-label').title = status === 'WebGPU' ? 'Shapes: instanced GPU quads. Text and paths: cached raster atlas.' : renderer?.gpuError || status;
+}, () => invalidate());
 function saveOptions() {
     try {
         localStorage.setItem('vellum-options', JSON.stringify(options));
     }
     catch { }
 }
-function saveSoon() { state.dirty = true; $('#save-indicator').innerHTML = '<i></i> Saving locally'; clearTimeout(saveTimer); saveTimer = setTimeout(save, 500); }
+function saveSoon() { state.dirty = true; $('#save-indicator').innerHTML = `<i></i> ${t('topbar.savingLocally')}`; clearTimeout(saveTimer); saveTimer = setTimeout(save, 500); }
 async function save() {
     clearTimeout(saveTimer);
     const data = doc.serialize();
@@ -62,11 +68,11 @@ async function save() {
         else
             localStorage.setItem('vellum-document', data);
         state.dirty = false;
-        $('#save-indicator').innerHTML = '<i></i> Saved locally';
+        $('#save-indicator').innerHTML = `<i></i> ${t('topbar.savedLocally')}`;
     }
     catch (e) {
-        $('#save-indicator').innerHTML = '<i style="background:var(--danger)"></i> Save failed';
-        toast('Local storage is full or unavailable. Export your .vellum file to keep your work.');
+        $('#save-indicator').innerHTML = `<i style="background:var(--danger)"></i> ${t('topbar.saveFailed')}`;
+        toast(t('toasts.saveFailed'));
     }
 }
 function invalidate() {
@@ -77,7 +83,7 @@ function invalidate() {
         scheduled = false;
         renderer.render(state.camera);
         drawOverlay();
-        $('#performance').textContent = `${renderer.visibleCount} layers · ${renderer.cpuMs.toFixed(1)} ms CPU`;
+        $('#performance').textContent = t('canvas.performance', { count: renderer.visibleCount, ms: renderer.cpuMs.toFixed(1) });
         $('#zoom-value').textContent = `${Math.round(state.camera.zoom * 100)}%`;
         const spacing = 20 * state.camera.zoom;
         $('#canvas-world').style.backgroundImage = options.grid && spacing >= 5 ? 'radial-gradient(var(--dot) .7px, transparent .7px)' : 'none';
@@ -87,7 +93,24 @@ function invalidate() {
             positionTextEditor();
     });
 }
-function refreshUI() { renderPages(); renderLayers(); renderInspector(); $('#file-name').textContent = doc.data.name; $('#canvas-page-name').textContent = doc.page.name; hydrateIcons(); }
+function updateLangButton() {
+    const btn = $('#lang-toggle');
+    if (!btn)
+        return;
+    const isZh = i18n.getLocale() === 'zh-CN';
+    btn.innerHTML = `<span style="${isZh ? 'color:var(--accent);font-weight:700' : 'opacity:0.65'}">中</span><span style="opacity:0.35;margin:0 1px">/</span><span style="${!isZh ? 'color:var(--accent);font-weight:700' : 'opacity:0.65'}">EN</span>`;
+    btn.title = isZh ? '当前语言：简体中文（点击切换为 English）' : 'Current: English (Click to switch to 简体中文)';
+}
+function toggleLanguage() {
+    const nextLang = i18n.getLocale() === 'zh-CN' ? 'en-US' : 'zh-CN';
+    options.language = nextLang;
+    saveOptions();
+    i18n.setLocale(nextLang);
+    updateLangButton();
+    toast(t('toasts.langChanged'));
+}
+function refreshUI() { renderPages(); renderLayers(); renderInspector(); $('#file-name').textContent = doc.data.name; $('#canvas-page-name').textContent = doc.page.name; hydrateIcons(); i18n.translateDOM(); updateLangButton(); }
+i18n.subscribe(() => { refreshUI(); invalidate(); });
 function syncComponents() {
     const sources = new Map(doc.data.pages.flatMap(p => p.nodes).map(n => [n.id, n]));
     for (const page of doc.data.pages)
@@ -238,38 +261,38 @@ function renderInspector() {
         return;
     }
     if (!n) {
-        html += section('Page', `<div class="fill-row"><div class="hex-field"><input type="color" id="canvas-color" value="${options.canvasColor || (options.theme === 'dark' ? '#1a1a1d' : '#e8e7ec')}" aria-label="Canvas color"><input type="text" value="${options.canvasColor || (options.theme === 'dark' ? '1A1A1D' : 'E8E7EC')}" readonly aria-label="Canvas hex"></div><span class="small-label">100%</span></div><label class="checkbox-row"><input type="checkbox" data-option="grid" ${options.grid ? 'checked' : ''}>Pixel grid</label>`, icon('sliders', 14));
-        html += section('Start with a frame', `<div class="property-grid"><button class="wide-button" data-preset="desktop">Desktop</button><button class="wide-button" data-preset="phone">Phone</button><button class="wide-button" data-preset="tablet">Tablet</button><button class="wide-button" data-preset="square">Social</button></div>`);
-        html += section('Local color styles', doc.data.tokens.colors.map(c => `<button class="style-row full-width" data-insert-color="${safeColor(c.value)}"><span class="style-swatch" style="background:${safeColor(c.value)}"></span><span class="style-info" style="text-align:left">${esc(c.name)}<small>${esc(c.value.toUpperCase())}</small></span>${icon('component', 12)}</button>`).join(''), `<button class="icon-button small" data-action="tokens" title="Edit design tokens">${icon('sliders', 14)}</button>`);
-        html += section('Text styles', doc.data.tokens.typography.map((t, i) => `<button class="typography-style full-width" data-type-style="${i}"><span class="type-icon">Aa</span><div style="text-align:left">${esc(t.name)}<small>Inter · ${t.size} / ${round(t.size * t.lineHeight)} · ${t.weight}</small></div></button>`).join(''));
-        html += section('Your work, your device', `<p>No account. No uploads. This document is saved locally in your browser.</p><button class="wide-button" data-action="saveFile" style="margin-top:13px">${icon('download', 13)} Save a portable copy</button>`);
+        html += section(t('inspector.pageSection'), `<div class="fill-row"><div class="hex-field"><input type="color" id="canvas-color" value="${options.canvasColor || (options.theme === 'dark' ? '#1a1a1d' : '#e8e7ec')}" aria-label="Canvas color"><input type="text" value="${options.canvasColor || (options.theme === 'dark' ? '1A1A1D' : 'E8E7EC')}" readonly aria-label="Canvas hex"></div><span class="small-label">100%</span></div><label class="checkbox-row"><input type="checkbox" data-option="grid" ${options.grid ? 'checked' : ''}>${t('settings.grid')}</label>`, icon('sliders', 14));
+        html += section(t('inspector.startWithFrame'), `<div class="property-grid"><button class="wide-button" data-preset="desktop">${t('inspector.presetDesktop')}</button><button class="wide-button" data-preset="phone">${t('inspector.presetPhone')}</button><button class="wide-button" data-preset="tablet">${t('inspector.presetTablet')}</button><button class="wide-button" data-preset="square">${t('inspector.presetSocial')}</button></div>`);
+        html += section(t('inspector.localColorStyles'), doc.data.tokens.colors.map(c => `<button class="style-row full-width" data-insert-color="${safeColor(c.value)}"><span class="style-swatch" style="background:${safeColor(c.value)}"></span><span class="style-info" style="text-align:left">${esc(c.name)}<small>${esc(c.value.toUpperCase())}</small></span>${icon('component', 12)}</button>`).join(''), `<button class="icon-button small" data-action="tokens" title="${t('inspector.editTokensTitle')}">${icon('sliders', 14)}</button>`);
+        html += section(t('inspector.textStyles'), doc.data.tokens.typography.map((tStyle, i) => `<button class="typography-style full-width" data-type-style="${i}"><span class="type-icon">Aa</span><div style="text-align:left">${esc(tStyle.name)}<small>Inter · ${tStyle.size} / ${round(tStyle.size * tStyle.lineHeight)} · ${tStyle.weight}</small></div></button>`).join(''));
+        html += section(t('inspector.yourWorkYourDevice'), `<p>${t('inspector.deviceNote')}</p><button class="wide-button" data-action="saveFile" style="margin-top:13px">${icon('download', 13)} ${t('inspector.savePortableCopy')}</button>`);
     }
     else {
         const multi = ns.length > 1;
-        html += section(`<span class="section-title">${icon(multi ? 'layers' : n.component ? 'component' : n.isInstance ? 'instance' : n.type, 14)}<span class="selection-name">${multi ? `${ns.length} layers selected` : esc(n.name)}</span></span>`, `<div class="selection-meta">${multi ? 'Edit shared properties' : n.isInstance ? 'Component instance' : n.component ? 'Main component' : `${n.type[0].toUpperCase() + n.type.slice(1)} · ${Math.round(n.w)} × ${Math.round(n.h)}`}</div>`, `<button class="icon-button small" data-action="selectionMenu" title="Layer actions">···</button>`);
-        const align = [['alignLeft', 'left'], ['alignCenter', 'center'], ['alignRight', 'right'], ['alignTop', 'top'], ['alignMiddle', 'middle'], ['alignBottom', 'bottom']].map(([i, a]) => `<button data-align="${a}" title="Align ${a}">${icon(i, 15)}</button>`).join('');
-        html += section('Position', `<div class="align-buttons">${align}</div><div class="property-grid">${field('X', 'x', n.x)}${field('Y', 'y', n.y)}${field(icon('rotate', 12), 'rotation', n.rotation, { unit: '°' })}${field(icon('radius', 12), 'radius', n.radius, { min: 0 })}</div>`);
-        html += section('Layout', `<div class="property-grid">${field('W', 'w', n.w, { min: .1 })}${field('H', 'h', n.h, { min: .1 })}</div>${['frame', 'group'].includes(n.type) ? `<label class="checkbox-row"><input type="checkbox" data-prop="clip" ${n.clip ? 'checked' : ''} ${n.type === 'group' ? 'disabled' : ''}>Clip content</label><div class="field-label"><span>Auto layout</span><span>Gap / Padding</span></div>${selectField('layout', n.layout || 'none', [['none', 'Freeform'], ['horizontal', 'Horizontal stack'], ['vertical', 'Vertical stack']])}${n.layout && n.layout !== 'none' ? `<div class="property-grid" style="margin-top:8px">${field('↔', 'gap', n.gap ?? 16, { min: 0 })}${field('⊞', 'padding', n.padding ?? 16, { min: 0 })}</div><div style="margin-top:8px">${selectField('layoutAlign', n.layoutAlign || 'start', [['start', 'Align start'], ['center', 'Align center'], ['end', 'Align end']])}</div>` : ''}` : ''}`, `<button class="icon-button small" data-action="toggleLayout" title="Toggle auto layout">${icon('plus', 14)}</button>`);
-        html += section('Appearance', `<div class="property-grid">${field(icon('opacity', 12), 'opacity', n.opacity * 100, { unit: '%', min: 0, max: 100 })}<div class="segmented"><button data-toggle="visible" class="${n.visible ? 'active' : ''}" title="Toggle visibility">${icon('eye', 14)}</button><button data-toggle="locked" class="${n.locked ? 'active' : ''}" title="Toggle lock">${icon('lock', 14)}</button></div></div>`);
+        html += section(`<span class="section-title">${icon(multi ? 'layers' : n.component ? 'component' : n.isInstance ? 'instance' : n.type, 14)}<span class="selection-name">${multi ? t('inspector.selectedLayers', { count: ns.length }) : esc(n.name)}</span></span>`, `<div class="selection-meta">${multi ? t('inspector.sharedProperties') : n.isInstance ? t('inspector.componentInstance') : n.component ? t('inspector.mainComponent') : `${n.type[0].toUpperCase() + n.type.slice(1)} · ${Math.round(n.w)} × ${Math.round(n.h)}`}</div>`, `<button class="icon-button small" data-action="selectionMenu" title="${t('inspector.layerActions')}">···</button>`);
+        const align = [['alignLeft', 'left', t('inspector.alignLeft')], ['alignCenter', 'center', t('inspector.alignCenter')], ['alignRight', 'right', t('inspector.alignRight')], ['alignTop', 'top', t('inspector.alignTop')], ['alignMiddle', 'middle', t('inspector.alignMiddle')], ['alignBottom', 'bottom', t('inspector.alignBottom')]].map(([i, a, title]) => `<button data-align="${a}" title="${title}">${icon(i, 15)}</button>`).join('');
+        html += section(t('inspector.position'), `<div class="align-buttons">${align}</div><div class="property-grid">${field('X', 'x', n.x)}${field('Y', 'y', n.y)}${field(icon('rotate', 12), 'rotation', n.rotation, { unit: '°' })}${field(icon('radius', 12), 'radius', n.radius, { min: 0 })}</div>`);
+        html += section(t('inspector.layout'), `<div class="property-grid">${field('W', 'w', n.w, { min: .1 })}${field('H', 'h', n.h, { min: .1 })}</div>${['frame', 'group'].includes(n.type) ? `<label class="checkbox-row"><input type="checkbox" data-prop="clip" ${n.clip ? 'checked' : ''} ${n.type === 'group' ? 'disabled' : ''}>${t('inspector.clipContent')}</label><div class="field-label"><span>${t('inspector.autoLayout')}</span><span>${t('inspector.gapPadding')}</span></div>${selectField('layout', n.layout || 'none', [['none', t('inspector.freeform')], ['horizontal', t('inspector.horizontalStack')], ['vertical', t('inspector.verticalStack')]])}${n.layout && n.layout !== 'none' ? `<div class="property-grid" style="margin-top:8px">${field('↔', 'gap', n.gap ?? 16, { min: 0 })}${field('⊞', 'padding', n.padding ?? 16, { min: 0 })}</div><div style="margin-top:8px">${selectField('layoutAlign', n.layoutAlign || 'start', [['start', t('inspector.alignStart')], ['center', t('inspector.alignCenter')], ['end', t('inspector.alignEnd')]])}</div>` : ''}` : ''}`, `<button class="icon-button small" data-action="toggleLayout" title="${t('inspector.toggleAutoLayout')}">${icon('plus', 14)}</button>`);
+        html += section(t('inspector.appearance'), `<div class="property-grid">${field(icon('opacity', 12), 'opacity', n.opacity * 100, { unit: '%', min: 0, max: 100 })}<div class="segmented"><button data-toggle="visible" class="${n.visible ? 'active' : ''}" title="${t('inspector.toggleVisibility')}">${icon('eye', 14)}</button><button data-toggle="locked" class="${n.locked ? 'active' : ''}" title="${t('inspector.toggleLock')}">${icon('lock', 14)}</button></div></div>`);
         if (ns.every(x => x.type === 'text')) {
-            html += section('Typography', `<div class="stack">${selectField('fontFamily', n.fontFamily, [...new Set(['Inter', 'Arial', 'Helvetica Neue', 'Georgia', 'Times New Roman', 'Verdana', 'Courier New', 'monospace', 'serif', 'sans-serif', ...Object.keys(doc.data.fonts || {}), n.fontFamily])])}<div class="property-grid">${selectField('fontWeight', n.fontWeight, [[300, 'Light'], [400, 'Regular'], [500, 'Medium'], [600, 'Semibold'], [700, 'Bold'], [800, 'Extra bold'], [900, 'Black']])}${field('Ag', 'fontSize', n.fontSize, { min: 1, max: 512 })}</div><div class="property-grid">${field('↕', 'lineHeight', n.lineHeight * 100, { unit: '%', min: 50, max: 500 })}${field('↔', 'letterSpacing', n.letterSpacing, { unit: 'px', step: .1 })}</div><div class="property-grid"><div class="segmented">${['left', 'center', 'right'].map(a => `<button data-text-align="${a}" class="${n.textAlign === a ? 'active' : ''}" title="Align text ${a}">${icon('text' + a[0].toUpperCase() + a.slice(1), 14)}</button>`).join('')}</div><div class="segmented"><button data-text-style="bold" class="${n.fontWeight >= 700 ? 'active' : ''}" title="Bold">${icon('bold', 14)}</button><button data-text-style="italic" class="${n.fontStyle === 'italic' ? 'active' : ''}" title="Italic">${icon('italic', 14)}</button><button data-text-style="underline" class="${n.textDecoration === 'underline' ? 'active' : ''}" title="Underline">${icon('underline', 14)}</button></div></div>${selectField('textCase', n.textCase, [['none', 'Original case'], ['upper', 'UPPERCASE'], ['lower', 'lowercase'], ['title', 'Title Case']])}${selectField('direction', n.direction || 'auto', [['auto', 'Automatic direction'], ['ltr', 'Left to right'], ['rtl', 'Right to left']])}<div class="property-grid"><button class="wide-button" data-action="editText">Edit text</button><button class="wide-button" data-action="loadFont">Load font…</button></div></div>`, icon('text', 14));
+            html += section(t('inspector.typography'), `<div class="stack">${selectField('fontFamily', n.fontFamily, [...new Set(['Inter', 'Arial', 'Helvetica Neue', 'Georgia', 'Times New Roman', 'Verdana', 'Courier New', 'monospace', 'serif', 'sans-serif', ...Object.keys(doc.data.fonts || {}), n.fontFamily])])}<div class="property-grid">${selectField('fontWeight', n.fontWeight, [[300, 'Light'], [400, 'Regular'], [500, 'Medium'], [600, 'Semibold'], [700, 'Bold'], [800, 'Extra bold'], [900, 'Black']])}${field('Ag', 'fontSize', n.fontSize, { min: 1, max: 512 })}</div><div class="property-grid">${field('↕', 'lineHeight', n.lineHeight * 100, { unit: '%', min: 50, max: 500 })}${field('↔', 'letterSpacing', n.letterSpacing, { unit: 'px', step: .1 })}</div><div class="property-grid"><div class="segmented">${['left', 'center', 'right'].map(a => `<button data-text-align="${a}" class="${n.textAlign === a ? 'active' : ''}" title="Align text ${a}">${icon('text' + a[0].toUpperCase() + a.slice(1), 14)}</button>`).join('')}</div><div class="segmented"><button data-text-style="bold" class="${n.fontWeight >= 700 ? 'active' : ''}" title="Bold">${icon('bold', 14)}</button><button data-text-style="italic" class="${n.fontStyle === 'italic' ? 'active' : ''}" title="Italic">${icon('italic', 14)}</button><button data-text-style="underline" class="${n.textDecoration === 'underline' ? 'active' : ''}" title="Underline">${icon('underline', 14)}</button></div></div>${selectField('textCase', n.textCase, [['none', 'Original case'], ['upper', 'UPPERCASE'], ['lower', 'lowercase'], ['title', 'Title Case']])}${selectField('direction', n.direction || 'auto', [['auto', 'Automatic direction'], ['ltr', 'Left to right'], ['rtl', 'Right to left']])}<div class="property-grid"><button class="wide-button" data-action="editText">${t('inspector.editText')}</button><button class="wide-button" data-action="loadFont">${t('inspector.loadFont')}</button></div></div>`, icon('text', 14));
         }
         if (n.type !== 'group')
-            html += section('Fill', `${selectField('fillType', n.fillType || 'solid', [['solid', 'Solid'], ['linear', 'Linear gradient']])}${colorField('fill', n.fill, 'fillOpacity', n.fillOpacity)}${n.fillType === 'linear' ? `${colorField('fill2', n.fill2)}<div style="margin-top:8px">${field('∠', 'gradientAngle', n.gradientAngle, { unit: '°' })}</div>` : ''}<div class="color-tokens">${doc.data.tokens.colors.map(c => `<button data-fill="${safeColor(c.value)}" title="${esc(c.name)}" style="background:${safeColor(c.value)}"></button>`).join('')}</div>`, `<button class="icon-button small" data-action="toggleFill" title="Toggle fill">${icon(n.fill === 'none' ? 'plus' : 'minus', 14)}</button>`);
+            html += section(t('inspector.fill'), `${selectField('fillType', n.fillType || 'solid', [['solid', t('inspector.solid')], ['linear', t('inspector.linearGradient')]])}${colorField('fill', n.fill, 'fillOpacity', n.fillOpacity)}${n.fillType === 'linear' ? `${colorField('fill2', n.fill2)}<div style="margin-top:8px">${field('∠', 'gradientAngle', n.gradientAngle, { unit: '°' })}</div>` : ''}<div class="color-tokens">${doc.data.tokens.colors.map(c => `<button data-fill="${safeColor(c.value)}" title="${esc(c.name)}" style="background:${safeColor(c.value)}"></button>`).join('')}</div>`, `<button class="icon-button small" data-action="toggleFill" title="${t('inspector.toggleFill')}">${icon(n.fill === 'none' ? 'plus' : 'minus', 14)}</button>`);
         if (!['group', 'text'].includes(n.type))
-            html += section('Stroke', n.strokeWidth > 0 ? `${colorField('stroke', n.stroke)}<div style="margin-top:8px">${field('W', 'strokeWidth', n.strokeWidth, { min: 0, max: 1000 })}</div>` : '<span class="small-label">No stroke</span>', `<button class="icon-button small" data-action="toggleStroke" title="Toggle stroke">${icon(n.strokeWidth ? 'minus' : 'plus', 14)}</button>`);
+            html += section(t('inspector.stroke'), n.strokeWidth > 0 ? `${colorField('stroke', n.stroke)}<div style="margin-top:8px">${field('W', 'strokeWidth', n.strokeWidth, { min: 0, max: 1000 })}</div>` : `<span class="small-label">${t('inspector.noStroke')}</span>`, `<button class="icon-button small" data-action="toggleStroke" title="${t('inspector.toggleStroke')}">${icon(n.strokeWidth ? 'minus' : 'plus', 14)}</button>`);
         if (!['group', 'text', 'path', 'line'].includes(n.type))
-            html += section('Effects', n.shadow ? `<div class="fill-row"><span class="small-label">Drop shadow</span><button class="icon-button small" data-action="toggleShadow" style="margin-left:auto" title="Remove shadow">${icon('eye', 14)}</button></div><div class="property-grid" style="margin-top:8px">${field('X', 'shadowX', n.shadowX)}${field('Y', 'shadowY', n.shadowY)}${field('↔', 'shadowBlur', n.shadowBlur, { min: 0 })}${field('α', 'shadowOpacity', n.shadowOpacity * 100, { unit: '%', min: 0, max: 100 })}</div>${colorField('shadowColor', n.shadowColor || '#000000')}` : '<span class="small-label">No effects</span>', `<button class="icon-button small" data-action="toggleShadow" title="Toggle shadow">${icon(n.shadow ? 'minus' : 'plus', 14)}</button>`);
+            html += section(t('inspector.effects'), n.shadow ? `<div class="fill-row"><span class="small-label">${t('inspector.dropShadow')}</span><button class="icon-button small" data-action="toggleShadow" style="margin-left:auto" title="${t('inspector.removeShadow')}">${icon('eye', 14)}</button></div><div class="property-grid" style="margin-top:8px">${field('X', 'shadowX', n.shadowX)}${field('Y', 'shadowY', n.shadowY)}${field('↔', 'shadowBlur', n.shadowBlur, { min: 0 })}${field('α', 'shadowOpacity', n.shadowOpacity * 100, { unit: '%', min: 0, max: 100 })}</div>${colorField('shadowColor', n.shadowColor || '#000000')}` : `<span class="small-label">${t('inspector.noEffects')}</span>`, `<button class="icon-button small" data-action="toggleShadow" title="${t('inspector.toggleShadow')}">${icon(n.shadow ? 'minus' : 'plus', 14)}</button>`);
         if (n.parentId) {
-            html += section('Constraints', `<div class="property-grid">${selectField('constraintH', n.constraintH || 'left', [['left', 'Left'], ['right', 'Right'], ['center', 'Center'], ['stretch', 'Left + right'], ['scale', 'Scale']])}${selectField('constraintV', n.constraintV || 'top', [['top', 'Top'], ['bottom', 'Bottom'], ['center', 'Center'], ['stretch', 'Top + bottom'], ['scale', 'Scale']])}</div>`);
+            html += section(t('inspector.constraints'), `<div class="property-grid">${selectField('constraintH', n.constraintH || 'left', [['left', 'Left'], ['right', 'Right'], ['center', 'Center'], ['stretch', 'Left + right'], ['scale', 'Scale']])}${selectField('constraintV', n.constraintV || 'top', [['top', 'Top'], ['bottom', 'Bottom'], ['center', 'Center'], ['stretch', 'Top + bottom'], ['scale', 'Scale']])}</div>`);
         }
-        html += section('Export', `<div class="property-grid" style="margin-bottom:8px"><select id="export-scale" aria-label="Export scale"><option value="1">1×</option><option value="2" selected>2×</option><option value="3">3×</option></select><select id="export-format" aria-label="Export format"><option>PNG</option><option>SVG</option></select></div><button class="export-button" data-action="exportSelection">${icon('download', 13)} Export ${multi ? 'selection' : esc(n.name.length > 21 ? n.name.slice(0, 20) + '…' : n.name)}</button>`);
-        html += section('Developer', `<button class="wide-button" data-action="inspectCSS">${icon('code', 14)} Inspect CSS</button>`);
+        html += section(t('inspector.exportSection'), `<div class="property-grid" style="margin-bottom:8px"><select id="export-scale" aria-label="Export scale"><option value="1">1×</option><option value="2" selected>2×</option><option value="3">3×</option></select><select id="export-format" aria-label="Export format"><option>PNG</option><option>SVG</option></select></div><button class="export-button" data-action="exportSelection">${icon('download', 13)} ${t('inspector.exportSelection', { name: multi ? t('exportDialog.selection') : esc(n.name.length > 21 ? n.name.slice(0, 20) + '…' : n.name) })}</button>`);
+        html += section(t('inspector.developer'), `<button class="wide-button" data-action="inspectCSS">${icon('code', 14)} ${t('inspector.inspectCSS')}</button>`);
     }
     $('#inspector').innerHTML = html;
     lastInspector = performance.now();
 }
-function renderPrototype(n) { const frames = doc.nodes.filter(n => n.type === 'frame' && !n.parentId); $('#inspector').innerHTML = section('Prototype', `<p>Connect a layer to a frame. In preview, clicking that layer navigates to the destination.</p>`) + (n ? section('Interaction', `<div class="field-label">On click → Navigate to</div>${selectField('prototypeTarget', n.prototypeTarget || '', [['', 'No destination'], ...frames.map(f => [f.id, f.name])])}<p>Transition: instant. Keyboard arrows also navigate between frames.</p>`) : section('Select a layer', '<p>Select a button, card, or other layer to add an interaction.</p>')) + section('Flow preview', `<button class="wide-button primary" data-action="present">${icon('play', 14)} Present frames</button><p>Preview is local. It does not publish or upload your design.</p>`); }
+function renderPrototype(n) { const frames = doc.nodes.filter(n => n.type === 'frame' && !n.parentId); $('#inspector').innerHTML = section(t('inspector.prototypeTitle'), `<p>${t('inspector.prototypeDesc')}</p>`) + (n ? section(t('inspector.interaction'), `<div class="field-label">${t('inspector.navigateOnClick')}</div>${selectField('prototypeTarget', n.prototypeTarget || '', [['', t('inspector.noDestination')], ...frames.map(f => [f.id, f.name])])}<p>${t('inspector.transitionInstant')}</p>`) : section(t('inspector.selectLayer'), `<p>${t('inspector.selectLayerDesc')}</p>`)) + section(t('inspector.flowPreview'), `<button class="wide-button primary" data-action="present">${icon('play', 14)} ${t('inspector.presentFrames')}</button><p>${t('inspector.previewNote')}</p>`); }
 function constrainChildren(n, oldW, oldH) {
     if (!['frame', 'group'].includes(n.type))
         return;
@@ -1576,12 +1599,12 @@ function finishText(cancel = false) {
 }
 function closeMenu() { $('#context-menu').classList.add('hidden'); }
 function showMenu(items, x, y) { const menu = $('#context-menu'); menu.innerHTML = items.map(item => item === '-' ? '<div class="menu-divider"></div>' : item.header ? `<div class="menu-header">${esc(item.header)}</div>` : `<button class="menu-item" data-menu-action="${esc(item.action)}" ${item.disabled ? 'disabled' : ''}><span>${esc(item.label)}</span><span class="shortcut">${esc(item.key || '')}</span></button>`).join(''); menu.classList.remove('hidden'); menu.style.left = Math.min(x, window.innerWidth - menu.offsetWidth - 10) + 'px'; menu.style.top = Math.min(y, window.innerHeight - menu.offsetHeight - 10) + 'px'; }
-function selectionMenu(x = window.innerWidth - 295, y = 113) { showMenu([{ label: 'Copy', action: 'copy', key: '⌘C' }, { label: 'Paste', action: 'paste', key: '⌘V' }, { label: 'Duplicate', action: 'duplicate', key: '⌘D' }, '-', { label: 'Group selection', action: 'group', key: '⌘G' }, { label: 'Ungroup', action: 'ungroup', key: '⇧⌘G' }, { label: 'Frame selection', action: 'frameSelection', key: '⌥⌘G' }, { label: 'Create component', action: 'component', key: '⌥⌘K' }, '-', { label: 'Bring to front', action: 'front', key: ']' }, { label: 'Send to back', action: 'back', key: '[' }, { label: 'Distribute horizontally', action: 'distributeH' }, { label: 'Distribute vertically', action: 'distributeV' }, '-', { label: 'Rename', action: 'rename', key: '⌘R' }, { label: 'Lock / unlock', action: 'lock', key: '⇧⌘L' }, { label: 'Hide / show', action: 'visibility', key: '⇧⌘H' }, '-', { label: 'Export PNG', action: 'exportPNG' }, { label: 'Export SVG', action: 'exportSVG' }, '-', { label: 'Delete', action: 'delete', key: '⌫' }], x, y); }
+function selectionMenu(x = window.innerWidth - 295, y = 113) { showMenu([{ label: t('contextMenu.copy'), action: 'copy', key: '⌘C' }, { label: t('contextMenu.paste'), action: 'paste', key: '⌘V' }, { label: t('contextMenu.duplicate'), action: 'duplicate', key: '⌘D' }, '-', { label: t('contextMenu.group'), action: 'group', key: '⌘G' }, { label: t('contextMenu.ungroup'), action: 'ungroup', key: '⇧⌘G' }, { label: t('contextMenu.frameSelection'), action: 'frameSelection', key: '⌥⌘G' }, { label: t('contextMenu.component'), action: 'component', key: '⌥⌘K' }, '-', { label: t('contextMenu.front'), action: 'front', key: ']' }, { label: t('contextMenu.back'), action: 'back', key: '[' }, { label: t('contextMenu.distributeH'), action: 'distributeH' }, { label: t('contextMenu.distributeV'), action: 'distributeV' }, '-', { label: t('contextMenu.rename'), action: 'rename', key: '⌘R' }, { label: t('contextMenu.lockUnlock'), action: 'lock', key: '⇧⌘L' }, { label: t('contextMenu.hideShow'), action: 'visibility', key: '⇧⌘H' }, '-', { label: t('contextMenu.exportPNG'), action: 'exportPNG' }, { label: t('contextMenu.exportSVG'), action: 'exportSVG' }, '-', { label: t('contextMenu.delete'), action: 'delete', key: '⌫' }], x, y); }
 function modal(content) { closeMenu(); $('#modal').innerHTML = content; $('#modal-backdrop').classList.remove('hidden'); hydrateIcons($('#modal')); $('#modal').querySelector('input,textarea,button,select')?.focus(); }
 function closeModal() { $('#modal-backdrop').classList.add('hidden'); $('#modal').innerHTML = ''; overlay.focus({ preventScroll: true }); }
-function modalHeader(title, subtitle = '') { return `<div class="modal-header"><div><h2>${title}</h2>${subtitle ? `<p style="margin:0">${subtitle}</p>` : ''}</div><button class="icon-button" data-close-modal title="Close dialog" aria-label="Close dialog">${icon('close')}</button></div>`; }
+function modalHeader(title, subtitle = '') { return `<div class="modal-header"><div><h2>${title}</h2>${subtitle ? `<p style="margin:0">${subtitle}</p>` : ''}</div><button class="icon-button" data-close-modal title="${t('common.close')}" aria-label="${t('common.close')}">${icon('close')}</button></div>`; }
 function promptText(title, value, callback) {
-    modal(`${modalHeader(esc(title))}<form id="prompt-form"><input class="form-input" id="prompt-value" value="${esc(value)}" required maxlength="200" autocomplete="off"><div class="modal-actions"><button type="button" class="wide-button" data-close-modal>Cancel</button><button class="wide-button primary" type="submit">Save</button></div></form>`);
+    modal(`${modalHeader(esc(title))}<form id="prompt-form"><input class="form-input" id="prompt-value" value="${esc(value)}" required maxlength="200" autocomplete="off"><div class="modal-actions"><button type="button" class="wide-button" data-close-modal>${t('common.cancel')}</button><button class="wide-button primary" type="submit">${t('common.save')}</button></div></form>`);
     $('#prompt-form').onsubmit = e => {
         e.preventDefault();
         const v = $('#prompt-value').value.trim();
@@ -1596,12 +1619,12 @@ function renameLayer() {
     const n = activeNode();
     if (!n)
         return;
-    promptText('Rename layer', n.name, name => transaction('Rename layer', () => { n.name = name; doc.touch(n); }));
+    promptText(t('contextMenu.rename'), n.name, name => transaction('Rename layer', () => { n.name = name; doc.touch(n); }));
 }
-function renameFile() { promptText('Name your design file', doc.data.name, name => transaction('Rename document', () => { doc.data.name = name; })); }
-function addPage() { promptText('Add a page', 'Untitled page', name => transaction('Add page', () => { const p = { id: uid(), name, nodes: [] }; doc.data.pages.push(p); doc.data.pageId = p.id; doc.refresh(); state.selection.clear(); fit(); })); }
+function renameFile() { promptText(t('topbar.renameDoc'), doc.data.name, name => transaction('Rename document', () => { doc.data.name = name; })); }
+function addPage() { promptText(t('leftPanel.addPage'), 'Untitled page', name => transaction('Add page', () => { const p = { id: uid(), name, nodes: [] }; doc.data.pages.push(p); doc.data.pageId = p.id; doc.refresh(); state.selection.clear(); fit(); })); }
 function editTokens() {
-    modal(`${modalHeader('Design tokens', 'Your shared visual foundation, stored in this file.')}<div id="token-editor">${doc.data.tokens.colors.map((c, i) => `<div style="display:flex;gap:8px;margin-bottom:10px"><input type="color" value="${safeColor(c.value)}" data-token-color="${i}" style="width:36px;height:36px"><input class="form-input" value="${esc(c.name)}" data-token-name="${i}"></div>`).join('')}</div><p>Changing a color remaps exact matching fills and strokes throughout the document.</p><div class="modal-actions"><button class="wide-button" id="export-tokens">Export JSON</button><button class="wide-button primary" id="save-tokens">Apply tokens</button></div>`);
+    modal(`${modalHeader(t('tokensDialog.title'), t('tokensDialog.subtitle'))}<div id="token-editor">${doc.data.tokens.colors.map((c, i) => `<div style="display:flex;gap:8px;margin-bottom:10px"><input type="color" value="${safeColor(c.value)}" data-token-color="${i}" style="width:36px;height:36px"><input class="form-input" value="${esc(c.name)}" data-token-name="${i}"></div>`).join('')}</div><p>${t('tokensDialog.note')}</p><div class="modal-actions"><button class="wide-button" id="export-tokens">${t('tokensDialog.exportJson')}</button><button class="wide-button primary" id="save-tokens">${t('tokensDialog.apply')}</button></div>`);
     $('#save-tokens').onclick = () => {
         const next = doc.data.tokens.colors.map((c, i) => ({ name: $(`[data-token-name="${i}"]`).value || c.name, value: $(`[data-token-color="${i}"]`).value }));
         closeModal();
@@ -1646,14 +1669,50 @@ function inspectCSS() {
         css += `\nbox-shadow: ${n.shadowX}px ${n.shadowY}px ${n.shadowBlur}px ${n.shadowColor}${Math.round(n.shadowOpacity * 255).toString(16).padStart(2, '0')};`;
     if (n.layout && n.layout !== 'none')
         css += `\ndisplay: flex;\nflex-direction: ${n.layout === 'horizontal' ? 'row' : 'column'};\ngap: ${n.gap ?? 16}px;\npadding: ${n.padding ?? 16}px;`;
-    modal(`${modalHeader('Inspect CSS', esc(n.name))}<pre class="token-code">${esc(css)}</pre><p>Geometry and visual styles. Vector paths and text shaping remain renderer-specific.</p><div class="modal-actions"><button class="wide-button primary" id="copy-css">Copy CSS</button></div>`);
-    $('#copy-css').onclick = () => navigator.clipboard.writeText(css).then(() => toast('CSS copied')).catch(() => toast('Clipboard blocked. Select the code to copy it.'));
+    modal(`${modalHeader(t('inspectCSSDialog.title'), esc(n.name))}<pre class="token-code">${esc(css)}</pre><p>${t('inspectCSSDialog.note')}</p><div class="modal-actions"><button class="wide-button primary" id="copy-css">${t('inspectCSSDialog.copyBtn')}</button></div>`);
+    $('#copy-css').onclick = () => navigator.clipboard.writeText(css).then(() => toast(t('toasts.cssCopied'))).catch(() => toast(t('toasts.clipboardBlocked')));
 }
-function help() { modal(`${modalHeader('A few keys. Endless possibilities.', 'Your Vellum field guide.')}<h3>Tools</h3><div class="shortcut-grid">${[['Move', 'V'], ['Frame', 'F'], ['Rectangle', 'R'], ['Ellipse', 'O'], ['Line', 'L'], ['Pen', 'P'], ['Text', 'T'], ['Hand', 'H']].map(([a, b]) => `<div>${a}<kbd>${b}</kbd></div>`).join('')}</div><h3>Canvas</h3><div class="shortcut-grid">${[['Pan', 'Space + drag'], ['Zoom', '⌘/Ctrl + scroll'], ['Fit all', 'Shift + 1'], ['Fit selection', 'Shift + 2'], ['Actual size', 'Shift + 0'], ['Hide panels', 'Tab'], ['Draw square / circle', 'Shift + drag'], ['Disable snapping', '⌘/Ctrl + drag']].map(([a, b]) => `<div>${a}<kbd>${b}</kbd></div>`).join('')}</div><h3>Editing</h3><div class="shortcut-grid">${[['Undo', '⌘Z'], ['Redo', '⇧⌘Z'], ['Duplicate', '⌘D'], ['Group', '⌘G'], ['Ungroup', '⇧⌘G'], ['Commands', '⌘K'], ['Edit text / path', 'Double-click'], ['Finish path', 'Enter'], ['Nudge', 'Arrow keys'], ['Nudge 10px', 'Shift + arrows'], ['Save file', '⌘S'], ['Place image', '⇧⌘K']].map(([a, b]) => `<div>${a}<kbd>${b}</kbd></div>`).join('')}</div><p>On Windows and Linux, use Ctrl in place of ⌘. Pen: drag an anchor while drawing to create Bézier handles. Alt-drag a handle to break tangent symmetry.</p>`); }
-function settings() { modal(`${modalHeader('A workspace that feels like yours.')}<div class="stack"><label class="checkbox-row"><input type="checkbox" id="settings-theme" ${options.theme === 'light' ? 'checked' : ''}>Light appearance</label><label class="checkbox-row"><input type="checkbox" data-option="grid" ${options.grid ? 'checked' : ''}>Canvas dot grid</label><label class="checkbox-row"><input type="checkbox" data-option="snap" ${options.snap ? 'checked' : ''}>Smart alignment guides</label><label class="checkbox-row"><input type="checkbox" data-option="rulers" ${options.rulers ? 'checked' : ''}>Canvas rulers</label></div><h3>Rendering</h3><pre class="token-code">Backend: ${esc(renderer.backend)}\nVisible layers: ${renderer.visibleCount}\nInstances: ${renderer.instanceCount}\nScene draw calls: ${renderer.drawCalls}\nCPU submission: ${renderer.cpuMs.toFixed(2)} ms\nDevice pixel ratio: ${renderer.dpr}\nStorage: ${storageMode}${renderer.backend !== 'WebGPU' ? `\nWebGPU status: ${esc(renderer.gpuError || 'Unavailable')}` : ''}</pre><p>Vellum draws on demand. The displayed time measures CPU scene assembly and command submission, not GPU execution or FPS. WebGPU requires a compatible browser and secure context.</p>`); $('#settings-theme').onchange = () => toggleTheme(); }
+function help() { modal(`${modalHeader(t('helpDialog.title'), t('helpDialog.subtitle'))}<h3>${t('helpDialog.tools')}</h3><div class="shortcut-grid">${[['Move', 'V'], ['Frame', 'F'], ['Rectangle', 'R'], ['Ellipse', 'O'], ['Line', 'L'], ['Pen', 'P'], ['Text', 'T'], ['Hand', 'H']].map(([a, b]) => `<div>${a}<kbd>${b}</kbd></div>`).join('')}</div><h3>${t('helpDialog.canvas')}</h3><div class="shortcut-grid">${[[t('helpDialog.pan'), 'Space + drag'], [t('helpDialog.zoom'), '⌘/Ctrl + scroll'], [t('helpDialog.fitAll'), 'Shift + 1'], [t('helpDialog.actualSize'), 'Shift + 0'], [t('helpDialog.hidePanels'), 'Tab'], [t('helpDialog.drawSquareCircle'), 'Shift + drag'], [t('helpDialog.disableSnapping'), '⌘/Ctrl + drag']].map(([a, b]) => `<div>${a}<kbd>${b}</kbd></div>`).join('')}</div><h3>${t('helpDialog.editing')}</h3><div class="shortcut-grid">${[[t('common.undo'), '⌘Z'], [t('common.redo'), '⇧⌘Z'], [t('common.duplicate'), '⌘D'], [t('common.group'), '⌘G'], [t('common.ungroup'), '⇧⌘G'], [t('helpDialog.commands'), '⌘K'], [t('helpDialog.editTextPath'), 'Double-click'], [t('helpDialog.finishPath'), 'Enter'], [t('helpDialog.nudge'), 'Arrow keys'], [t('helpDialog.nudge10'), 'Shift + arrows'], [t('helpDialog.saveFile'), '⌘S'], [t('toolbar.insertImage'), '⇧⌘K']].map(([a, b]) => `<div>${a}<kbd>${b}</kbd></div>`).join('')}</div><p>${t('helpDialog.note')}</p>`); }
+function settings() {
+    modal(`${modalHeader(t('settings.dialogTitle'), t('settings.dialogSubtitle'))}
+<div class="stack">
+  <div style="display:flex;justify-content:space-between;align-items:center;background:var(--surface2);padding:10px 14px;border-radius:8px;border:1px solid var(--border);margin-bottom:6px">
+    <div>
+      <strong style="font-size:13px;display:block">${t('settings.language')}</strong>
+      <span style="font-size:11px;color:var(--muted)">English / 简体中文</span>
+    </div>
+    <select id="settings-language" class="form-input" style="width:130px;padding:4px 8px;font-size:13px;cursor:pointer">
+      <option value="zh-CN" ${i18n.getLocale() === 'zh-CN' ? 'selected' : ''}>简体中文</option>
+      <option value="en-US" ${i18n.getLocale() === 'en-US' ? 'selected' : ''}>English</option>
+    </select>
+  </div>
+  <label class="checkbox-row"><input type="checkbox" id="settings-theme" ${options.theme === 'light' ? 'checked' : ''}>${t('settings.themeLight')}</label>
+  <label class="checkbox-row"><input type="checkbox" data-option="grid" ${options.grid ? 'checked' : ''}>${t('settings.grid')}</label>
+  <label class="checkbox-row"><input type="checkbox" data-option="snap" ${options.snap ? 'checked' : ''}>${t('settings.snap')}</label>
+  <label class="checkbox-row"><input type="checkbox" data-option="rulers" ${options.rulers ? 'checked' : ''}>${t('settings.rulers')}</label>
+</div>
+<h3>${t('settings.rendering')}</h3>
+<pre class="token-code">${t('settings.backend', { backend: esc(renderer.backend) })}
+${t('settings.visibleLayers', { count: renderer.visibleCount })}
+${t('settings.instances', { count: renderer.instanceCount })}
+${t('settings.sceneDrawCalls', { count: renderer.drawCalls })}
+${t('settings.submissionTime', { ms: renderer.cpuMs.toFixed(2) })}
+${t('settings.devicePixelRatio', { dpr: renderer.dpr })}
+${t('settings.storage', { mode: storageMode })}${renderer.backend !== 'WebGPU' ? `\n${t('settings.webgpuStatus', { status: esc(renderer.gpuError || 'Unavailable') })}` : ''}</pre>
+<p>${t('settings.renderNote')}</p>`);
+    $('#settings-theme').onchange = () => toggleTheme();
+    $('#settings-language').onchange = (e) => {
+        const newLang = e.target.value;
+        options.language = newLang;
+        saveOptions();
+        i18n.setLocale(newLang);
+        settings();
+        toast(t('toasts.langChanged'));
+    };
+}
 function toggleTheme() { options.theme = options.theme === 'dark' ? 'light' : 'dark'; delete options.canvasColor; $('#canvas-world').style.backgroundColor = ''; document.documentElement.dataset.theme = options.theme; saveOptions(); refreshUI(); invalidate(); }
-function openExport() { modal(`${modalHeader('Take your work with you.', 'Portable by design. No account required.')}<button class="wide-button primary" id="modal-save-file" style="height:43px">${icon('download')} Download .vellum document</button><p>Includes every page, editable layer, component, design token, and placed image.</p><h3>Export ${state.selection.size ? 'selection' : 'current page'}</h3><div class="property-grid"><button class="wide-button" id="modal-png">PNG image · 2×</button><button class="wide-button" id="modal-svg">SVG vector</button></div><h3>Already have a Vellum file?</h3><button class="wide-button" id="modal-open-file">${icon('upload')} Open document</button><p>Vellum files are JSON. This editor does not read or write Figma’s proprietary .fig format.</p>`); $('#modal-save-file').onclick = saveFile; $('#modal-png').onclick = () => doExport('PNG', 2); $('#modal-svg').onclick = () => doExport('SVG'); $('#modal-open-file').onclick = () => { $('#file-input').click(); closeModal(); }; }
-function newFile() { modal(`${modalHeader('Start with a clean canvas.')}<p>Your current document will remain available in Undo. Export a .vellum copy to keep it as a separate file.</p><div class="modal-actions"><button class="wide-button" data-close-modal>Cancel</button><button class="wide-button" id="backup-new">Export current file</button><button class="wide-button primary" id="confirm-new">New document</button></div>`); $('#backup-new').onclick = saveFile; $('#confirm-new').onclick = () => { closeModal(); transaction('New document', () => { const p = { id: uid(), name: 'Page 1', nodes: [] }; doc.data.name = 'Untitled design'; doc.data.pages = [p]; doc.data.pageId = p.id; doc.refresh(); state.selection.clear(); state.pageViews.clear(); fit(); }); }; }
+function openExport() { modal(`${modalHeader(t('exportDialog.title'), t('exportDialog.subtitle'))}<button class="wide-button primary" id="modal-save-file" style="height:43px">${icon('download')} ${t('exportDialog.downloadDoc')}</button><p>${t('exportDialog.downloadNote')}</p><h3>${t('exportDialog.exportHeading', { target: state.selection.size ? t('exportDialog.selection') : t('exportDialog.currentPage') })}</h3><div class="property-grid"><button class="wide-button" id="modal-png">${t('exportDialog.pngOption')}</button><button class="wide-button" id="modal-svg">${t('exportDialog.svgOption')}</button></div><h3>${t('exportDialog.alreadyHave')}</h3><button class="wide-button" id="modal-open-file">${icon('upload')} ${t('exportDialog.openDoc')}</button><p>${t('exportDialog.jsonNote')}</p>`); $('#modal-save-file').onclick = saveFile; $('#modal-png').onclick = () => doExport('PNG', 2); $('#modal-svg').onclick = () => doExport('SVG'); $('#modal-open-file').onclick = () => { $('#file-input').click(); closeModal(); }; }
+function newFile() { modal(`${modalHeader(t('newFileDialog.title'))}<p>${t('newFileDialog.desc')}</p><div class="modal-actions"><button class="wide-button" data-close-modal>${t('common.cancel')}</button><button class="wide-button" id="backup-new">${t('newFileDialog.backup')}</button><button class="wide-button primary" id="confirm-new">${t('newFileDialog.confirm')}</button></div>`); $('#backup-new').onclick = saveFile; $('#confirm-new').onclick = () => { closeModal(); transaction('New document', () => { const p = { id: uid(), name: 'Page 1', nodes: [] }; doc.data.name = 'Untitled design'; doc.data.pages = [p]; doc.data.pageId = p.id; doc.refresh(); state.selection.clear(); state.pageViews.clear(); fit(); }); }; }
 function stressTest() {
     transaction('Generate rendering stress test', () => {
         const p = { id: uid(), name: 'GPU stress test · 5,000 shapes', nodes: [] };
@@ -1668,7 +1727,7 @@ function stressTest() {
         state.selection.clear();
         fit();
     });
-    toast('5,000 editable GPU primitives. See Settings for measured render statistics.');
+    toast(t('toasts.stressTestNotice'));
 }
 const actions = { undo, redo, copy: copySelection, paste: pasteSelection, duplicate, delete: removeSelection, group: () => groupSelection(), ungroup: ungroupSelection, frameSelection: () => groupSelection(true), component: makeComponent, front: () => reorder('front'), back: () => reorder('back'), forward: () => reorder('forward'), backward: () => reorder('backward'), distributeH: () => distribute(true), distributeV: () => distribute(false), rename: renameLayer, renameFile, lock: () => toggleProperty('locked'), visibility: () => toggleProperty('visible'), fit: () => fit(), fitSelection: () => fit([...state.selection]), actualSize: () => zoomAt(1 / state.camera.zoom), saveFile, openFile: () => $('#file-input').click(), newFile, addPage, theme: toggleTheme, help, settings, tokens: editTokens, inspectCSS, exportPNG: () => doExport('PNG', 2), exportSVG: () => doExport('SVG'), exportSelection: () => doExport($('#export-format')?.value || 'PNG', +($('#export-scale')?.value || 2)), selectionMenu, editText: () => startText(activeNode(), true), toggleFill: () => setProperty('fill', activeNode()?.fill === 'none' ? '#b8a2e2' : 'none'), toggleStroke: () => setProperty('strokeWidth', activeNode()?.strokeWidth ? 0 : 1), toggleShadow: () => toggleProperty('shadow'), toggleLayout: () => {
         const n = activeNode();
@@ -1679,12 +1738,46 @@ const actions = { undo, redo, copy: copySelection, paste: pasteSelection, duplic
             return;
         }
         setProperty('layout', n.layout && n.layout !== 'none' ? 'none' : 'horizontal');
-    }, present: () => present(), stressTest, grid: () => { options.grid = !options.grid; saveOptions(); invalidate(); }, rulers: () => { options.rulers = !options.rulers; saveOptions(); invalidate(); }, snap: () => { options.snap = !options.snap; saveOptions(); toast('Smart snapping ' + (options.snap ? 'on' : 'off')); }, placeImage: () => $('#image-input').click(), resetStarter: () => { transaction('Restore example file', () => { Object.assign(doc.data, makeStarter()); doc.refresh(); state.selection.clear(); renderer.atlas?.reset(); fit(); }); } };
-const commands = [['New document', 'newFile'], ['Open .vellum document', 'openFile'], ['Save portable document', 'saveFile'], ['Undo', 'undo'], ['Redo', 'redo'], ['Fit all to view', 'fit'], ['Fit selection', 'fitSelection'], ['Zoom to 100%', 'actualSize'], ['Duplicate selection', 'duplicate'], ['Group selection', 'group'], ['Ungroup selection', 'ungroup'], ['Frame selection', 'frameSelection'], ['Create component', 'component'], ['Bring to front', 'front'], ['Send to back', 'back'], ['Distribute horizontally', 'distributeH'], ['Distribute vertically', 'distributeV'], ['Place an image', 'placeImage'], ['Export PNG', 'exportPNG'], ['Export SVG', 'exportSVG'], ['Present frames', 'present'], ['Toggle light / dark theme', 'theme'], ['Toggle canvas grid', 'grid'], ['Toggle rulers', 'rulers'], ['Toggle smart snapping', 'snap'], ['Edit design tokens', 'tokens'], ['Inspect CSS', 'inspectCSS'], ['Add a page', 'addPage'], ['Rendering settings', 'settings'], ['Keyboard shortcuts', 'help'], ['Create 5,000-shape stress test', 'stressTest'], ['Restore Forma starter document', 'resetStarter']];
+    }, present: () => present(), stressTest, grid: () => { options.grid = !options.grid; saveOptions(); invalidate(); }, rulers: () => { options.rulers = !options.rulers; saveOptions(); invalidate(); }, snap: () => { options.snap = !options.snap; saveOptions(); toast(options.snap ? t('toasts.smartSnappingOn') : t('toasts.smartSnappingOff')); }, placeImage: () => $('#image-input').click(), resetStarter: () => { transaction('Restore example file', () => { Object.assign(doc.data, makeStarter()); doc.refresh(); state.selection.clear(); renderer.atlas?.reset(); fit(); }); } };
+const getCommands = () => [
+    [t('commands.newFile'), 'newFile'],
+    [t('commands.openFile'), 'openFile'],
+    [t('commands.saveFile'), 'saveFile'],
+    [t('commands.undo'), 'undo'],
+    [t('commands.redo'), 'redo'],
+    [t('commands.fit'), 'fit'],
+    [t('commands.fitSelection'), 'fitSelection'],
+    [t('commands.actualSize'), 'actualSize'],
+    [t('commands.duplicate'), 'duplicate'],
+    [t('commands.group'), 'group'],
+    [t('commands.ungroup'), 'ungroup'],
+    [t('commands.frameSelection'), 'frameSelection'],
+    [t('commands.component'), 'component'],
+    [t('commands.front'), 'front'],
+    [t('commands.back'), 'back'],
+    [t('commands.distributeH'), 'distributeH'],
+    [t('commands.distributeV'), 'distributeV'],
+    [t('commands.placeImage'), 'placeImage'],
+    [t('commands.exportPNG'), 'exportPNG'],
+    [t('commands.exportSVG'), 'exportSVG'],
+    [t('commands.present'), 'present'],
+    [t('commands.theme'), 'theme'],
+    [t('commands.grid'), 'grid'],
+    [t('commands.rulers'), 'rulers'],
+    [t('commands.snap'), 'snap'],
+    [t('commands.tokens'), 'tokens'],
+    [t('commands.inspectCSS'), 'inspectCSS'],
+    [t('commands.addPage'), 'addPage'],
+    [t('commands.settings'), 'settings'],
+    [t('commands.help'), 'help'],
+    [t('commands.stressTest'), 'stressTest'],
+    [t('commands.resetStarter'), 'resetStarter']
+];
 function commandPalette() {
-    modal(`<input class="command-search" id="command-search" placeholder="What would you like to do?" aria-label="Search commands" autocomplete="off"><div class="command-results" id="command-results"></div><p style="font-size:10px;margin-bottom:0">↑ ↓ to navigate &nbsp; · &nbsp; Enter to run &nbsp; · &nbsp; Esc to close</p>`);
+    const commands = getCommands();
+    modal(`<input class="command-search" id="command-search" placeholder="${esc(t('commands.searchPlaceholder'))}" aria-label="${esc(t('commands.searchAria'))}" autocomplete="off"><div class="command-results" id="command-results"></div><p style="font-size:10px;margin-bottom:0">${t('commands.navigateHint')}</p>`);
     let selectedIndex = 0, filtered = [];
-    const render = () => { filtered = commands.filter(([label]) => label.toLowerCase().includes($('#command-search').value.toLowerCase())); selectedIndex = Math.min(selectedIndex, Math.max(0, filtered.length - 1)); $('#command-results').innerHTML = filtered.map(([label, action], i) => `<button class="menu-item ${i === selectedIndex ? 'focused' : ''}" data-command="${action}"><span>${esc(label)}</span><span class="shortcut">↵</span></button>`).join('') || '<div class="empty-state">No matching commands.</div>'; };
+    const render = () => { filtered = commands.filter(([label]) => label.toLowerCase().includes($('#command-search').value.toLowerCase())); selectedIndex = Math.min(selectedIndex, Math.max(0, filtered.length - 1)); $('#command-results').innerHTML = filtered.map(([label, action], i) => `<button class="menu-item ${i === selectedIndex ? 'focused' : ''}" data-command="${action}"><span>${esc(label)}</span><span class="shortcut">↵</span></button>`).join('') || `<div class="empty-state">${t('commands.noMatching')}</div>`; };
     $('#command-search').oninput = () => { selectedIndex = 0; render(); };
     $('#command-search').onkeydown = e => {
         if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
@@ -1706,7 +1799,7 @@ async function present() {
     finishText();
     state.previewFrames = doc.nodes.filter(n => n.type === 'frame' && !n.parentId && n.visible);
     if (!state.previewFrames.length) {
-        toast('Create a frame to present your design.');
+        toast(t('toasts.noFramesPresent'));
         return;
     }
     const active = activeNode(), ancestor = active && (active.parentId ? doc.ancestors(active).at(-1) : active);
@@ -1987,8 +2080,30 @@ $('#layer-tree').addEventListener('drop', e => {
         select([id]);
     });
 });
-$('#main-menu').onclick = () => showMenu([{ header: 'Vellum — make room for ideas' }, { label: 'New document', action: 'newFile', key: '⌘N' }, { label: 'Open document…', action: 'openFile', key: '⌘O' }, { label: 'Save portable document', action: 'saveFile', key: '⌘S' }, '-', { label: 'Undo', action: 'undo', key: '⌘Z', disabled: !history.undoStack.length }, { label: 'Redo', action: 'redo', key: '⇧⌘Z', disabled: !history.redoStack.length }, '-', { label: 'Place image…', action: 'placeImage', key: '⇧⌘K' }, { label: 'Design tokens', action: 'tokens' }, { label: 'Add page', action: 'addPage' }, '-', { label: 'Toggle light / dark', action: 'theme' }, { label: (options.grid ? 'Hide' : 'Show') + ' dot grid', action: 'grid' }, { label: (options.rulers ? 'Hide' : 'Show') + ' rulers', action: 'rulers' }, { label: 'Editor settings', action: 'settings' }, { label: 'Keyboard shortcuts', action: 'help', key: '?' }], 9, 46);
+$('#main-menu').onclick = () => showMenu([
+    { header: t('menu.header') },
+    { label: t('menu.newDoc'), action: 'newFile', key: '⌘N' },
+    { label: t('menu.openDoc'), action: 'openFile', key: '⌘O' },
+    { label: t('menu.saveDoc'), action: 'saveFile', key: '⌘S' },
+    '-',
+    { label: t('common.undo'), action: 'undo', key: '⌘Z', disabled: !history.undoStack.length },
+    { label: t('common.redo'), action: 'redo', key: '⇧⌘Z', disabled: !history.redoStack.length },
+    '-',
+    { label: t('menu.placeImage'), action: 'placeImage', key: '⇧⌘K' },
+    { label: t('menu.designTokens'), action: 'tokens' },
+    { label: t('menu.addPage'), action: 'addPage' },
+    '-',
+    { label: t('menu.toggleTheme'), action: 'theme' },
+    { label: (options.grid ? t('menu.hideGrid') : t('menu.showGrid')), action: 'grid' },
+    { label: (options.rulers ? t('menu.hideRulers') : t('menu.showRulers')), action: 'rulers' },
+    { label: t('menu.settings'), action: 'settings' },
+    { label: t('menu.shortcuts'), action: 'help', key: '?' }
+], 9, 46);
 $('#file-name').onclick = renameFile;
+if ($('#lang-toggle')) {
+    $('#lang-toggle').onclick = toggleLanguage;
+    updateLangButton();
+}
 $('#add-page').onclick = addPage;
 $('#theme-toggle').onclick = toggleTheme;
 $('#settings').onclick = settings;
@@ -1997,8 +2112,8 @@ $('#share').onclick = openExport;
 $('#present').onclick = () => present();
 $('#insert-image').onclick = () => $('#image-input').click();
 $('#command-button').onclick = commandPalette;
-$('#profile').onclick = () => toast('Your local workspace. No account, presence simulation, or cloud upload.');
-$('#canvas-status').onclick = () => toast('Saved in this browser only. Export a .vellum copy for backup.');
+$('#profile').onclick = () => toast(t('toasts.profileTip'));
+$('#canvas-status').onclick = () => toast(t('toasts.canvasStatusTip'));
 $('#dismiss-tip').onclick = () => {
     $('#welcome-tip').classList.add('hidden');
     try {
@@ -2025,7 +2140,12 @@ $('#search-button').onclick = () => {
 $('#search-layers').oninput = renderLayers;
 $('#zoom-in').onclick = () => zoomAt(1.25);
 $('#zoom-out').onclick = () => zoomAt(.8);
-$('#zoom-value').onclick = e => showMenu([{ label: 'Zoom to fit', action: 'fit', key: '⇧1' }, { label: 'Zoom to selection', action: 'fitSelection', key: '⇧2' }, { label: 'Zoom to 100%', action: 'actualSize', key: '⇧0' }, { label: (options.grid ? 'Hide' : 'Show') + ' dot grid', action: 'grid' }], e.clientX - 150, e.clientY - 150);
+$('#zoom-value').onclick = e => showMenu([
+    { label: t('zoomMenu.fit'), action: 'fit', key: '⇧1' },
+    { label: t('zoomMenu.fitSelection'), action: 'fitSelection', key: '⇧2' },
+    { label: t('zoomMenu.actualSize'), action: 'actualSize', key: '⇧0' },
+    { label: (options.grid ? t('menu.hideGrid') : t('menu.showGrid')), action: 'grid' }
+], e.clientX - 150, e.clientY - 150);
 $('#file-input').onchange = e => { importDocument(e.target.files[0]); e.target.value = ''; };
 $('#image-input').onchange = e => { importImage(e.target.files[0]); e.target.value = ''; };
 $('#modal-backdrop').onclick = e => {

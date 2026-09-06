@@ -5,7 +5,14 @@
   "width": 1280.0,
   "height": 820.0,
   "theme": "dark",
-  "resources": {},
+  "resources": {
+    "Brush.Brand.Purple": "#8462E8",
+    "Brush.Neutral.Darkbg": "#18161E",
+    "Brush.Neutral.Surface": "#23202C",
+    "Brush.Neutral.Cardbg": "#2E2A3A",
+    "Brush.Text.Primary": "#FAF7FD",
+    "Brush.Text.Secondary": "#A49BB3"
+  },
   "root": {
     "id": "win-root",
     "type": "window",

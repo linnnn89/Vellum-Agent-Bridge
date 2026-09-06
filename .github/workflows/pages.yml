@@ -46,9 +46,13 @@ jobs:
           python -m pip install -r requirements-dev.txt
           python -m playwright install --with-deps chromium
       - name: Validate, build and run browser integration tests
-        # Test the actual Pages output at /Vellum/?canvas, not an inline fixture.
-        # Hosted CI asserts the deterministic Canvas 2D fallback, not hardware WebGPU.
+        # Dynamic project subpath allows fork repositories to test seamlessly.
         run: python scripts/ci.py
+      - name: Run Bridge compiler tests on Linux
+        run: |
+          cd tools/vellum-wpf-bridge
+          python -m pip install -e .
+          python tests/run_tests.py
       - name: Upload browser reports and screenshots
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -67,16 +71,55 @@ jobs:
           if-no-files-found: error
           retention-days: 14
       - name: Upload GitHub Pages artifact
-        if: github.repository == 'wieslawsoltes/Vellum' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b # v4
         with:
           path: _site
           retention-days: 1
 
+  windows-bridge:
+    name: Windows Bridge and WPF Build
+    runs-on: windows-latest
+    timeout-minutes: 15
+    concurrency:
+      group: vellum-windows-bridge-${{ github.event_name }}-${{ github.ref }}
+      cancel-in-progress: true
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - name: Check out source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.12'
+      - name: Set up .NET
+        uses: actions/setup-dotnet@3951f0dfe7a07e2313ec93c75700083e200f37a4 # v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Install Bridge package and run unit & canary tests
+        run: |
+          cd tools/vellum-wpf-bridge
+          python -m pip install -e .
+          python tests/run_tests.py
+      - name: Verify CLI commands
+        run: |
+          vellum-wpf --help
+          vellum-wpf validate tools/vellum-wpf-bridge/samples/tabletop-chat.vellum
+          vellum-wpf convert tools/vellum-wpf-bridge/samples/tabletop-chat.vellum -o tools/vellum-wpf-bridge/output_ci
+          vellum-wpf generate tools/vellum-wpf-bridge/output_ci/ui-spec.json -o tools/vellum-wpf-bridge/output_ci_gen
+      - name: Build Generated WPF Demo (.NET)
+        run: |
+          cd tools/vellum-wpf-bridge/samples/generated-wpf-demo
+          dotnet build GeneratedWpfDemo.csproj -c Release --nologo
+
   deploy:
     name: Publish GitHub Pages
-    if: github.repository == 'wieslawsoltes/Vellum' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
-    needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: [build, windows-bridge]
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
@@ -90,7 +133,6 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Configure GitHub Pages
-        # One-time repository setup: Settings > Pages > Source > GitHub Actions.
         uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5
       - name: Deploy the validated site
         id: deployment
