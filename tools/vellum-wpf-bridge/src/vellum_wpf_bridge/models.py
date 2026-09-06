@@ -117,6 +117,16 @@ class UiSource:
             "sourceType": self.source_type,
         }
 
+    @classmethod
+    def from_dict(cls, d: Dict[str, Any]) -> UiSource:
+        return cls(
+            format=d.get("format", "vellum"),
+            node_id=d.get("nodeId", ""),
+            node_name=d.get("nodeName", ""),
+            source_type=d.get("sourceType", ""),
+        )
+
+
 
 @dataclass
 class UiLayout:
@@ -190,6 +200,33 @@ class UiLayout:
             d["gridRow"] = self.grid_row
         return d
 
+    @classmethod
+    def from_dict(cls, d: Dict[str, Any]) -> UiLayout:
+        return cls(
+            type=d.get("type"),
+            direction=d.get("direction"),
+            gap=d.get("gap"),
+            padding=d.get("padding"),
+            align=d.get("align"),
+            cross_align=d.get("crossAlign"),
+            grow=d.get("grow"),
+            width_mode=d.get("widthMode"),
+            height_mode=d.get("heightMode"),
+            constraint_h=d.get("constraintH"),
+            constraint_v=d.get("constraintV"),
+            design_width=d.get("designWidth"),
+            design_height=d.get("designHeight"),
+            x=d.get("x"),
+            y=d.get("y"),
+            width=d.get("width"),
+            height=d.get("height"),
+            columns=d.get("columns"),
+            rows=d.get("rows"),
+            grid_column=d.get("gridColumn"),
+            grid_row=d.get("gridRow"),
+        )
+
+
 
 @dataclass
 class UiStyle:
@@ -231,6 +268,22 @@ class UiStyle:
             d["textAlign"] = self.text_align
         return d
 
+    @classmethod
+    def from_dict(cls, d: Dict[str, Any]) -> UiStyle:
+        return cls(
+            background=d.get("background"),
+            foreground=d.get("foreground"),
+            border_color=d.get("borderColor"),
+            border_thickness=d.get("borderThickness"),
+            corner_radius=d.get("cornerRadius"),
+            opacity=d.get("opacity"),
+            font_size=d.get("fontSize"),
+            font_weight=d.get("fontWeight"),
+            font_family=d.get("fontFamily"),
+            font_style=d.get("fontStyle"),
+            text_align=d.get("textAlign"),
+        )
+
 
 @dataclass
 class UiNode:
@@ -268,6 +321,24 @@ class UiNode:
             res["warnings"] = self.warnings
         return res
 
+    @classmethod
+    def from_dict(cls, d: Dict[str, Any]) -> UiNode:
+        source = UiSource.from_dict(d["source"]) if d.get("source") else None
+        layout = UiLayout.from_dict(d["layout"]) if d.get("layout") else UiLayout()
+        style = UiStyle.from_dict(d["style"]) if d.get("style") else UiStyle()
+        children = [UiNode.from_dict(c) for c in d.get("children", [])]
+        return cls(
+            id=d["id"],
+            type=d["type"],
+            name=d.get("name"),
+            source=source,
+            layout=layout,
+            style=style,
+            props=dict(d.get("props", {})),
+            children=children,
+            warnings=list(d.get("warnings", [])),
+        )
+
 
 @dataclass
 class UiSpec:
@@ -292,6 +363,21 @@ class UiSpec:
             "resources": self.resources,
             "root": self.root.to_dict() if self.root else None,
         }
+
+    @classmethod
+    def from_dict(cls, d: Dict[str, Any]) -> UiSpec:
+        root = UiNode.from_dict(d["root"]) if d.get("root") else None
+        return cls(
+            version=str(d.get("version", "0.1")),
+            name=str(d.get("name", "MainWindow")),
+            type=str(d.get("type", "window")),
+            width=float(d.get("width", 1200)),
+            height=float(d.get("height", 800)),
+            theme=str(d.get("theme", "dark")),
+            resources=dict(d.get("resources", {})),
+            root=root,
+        )
+
 
 
 # ==========================================

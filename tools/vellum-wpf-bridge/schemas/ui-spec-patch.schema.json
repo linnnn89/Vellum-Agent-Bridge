@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vellum.design/schemas/ui-spec-patch.schema.json",
+  "title": "UiSpecPatch",
+  "description": "Agent refinement patch for Semantic UI Spec allowing semantic modifications while locking design constraints",
+  "type": "object",
+  "required": ["version", "baseSpecSha256", "operations"],
+  "properties": {
+    "version": {
+      "type": "integer",
+      "const": 1
+    },
+    "baseSpecSha256": {
+      "type": "string",
+      "pattern": "^[a-fA-F0-9]{64}$"
+    },
+    "operations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["op", "nodeId", "path", "value", "reason"],
+        "properties": {
+          "op": {
+            "type": "string",
+            "enum": ["set"]
+          },
+          "nodeId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "path": {
+            "type": "string",
+            "enum": [
+              "name",
+              "props.text",
+              "props.command",
+              "props.tooltip",
+              "props.accessibleName",
+              "props.helpText",
+              "props.semanticRole"
+            ]
+          },
+          "value": {},
+          "reason": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

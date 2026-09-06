@@ -1,153 +1,234 @@
 # Vellum (Agent Bridge Edition)
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Python](https://img.shields.io/badge/Python-3.10%2B-brightgreen.svg)]()
+[![.NET](https://img.shields.io/badge/.NET-8.0%20%7C%209.0-purple.svg)]()
+[![Renderer](https://img.shields.io/badge/Renderer-WebGPU%20%2F%20Canvas2D-orange.svg)]()
+[![CI](https://github.com/linnnn89/Vellum-Agent-Bridge/actions/workflows/pages.yml/badge.svg)](https://github.com/linnnn89/Vellum-Agent-Bridge/actions)
+
+[English](README.md) | [简体中文](README.zh-CN.md)
+
+A local-first WebGPU vector design editor paired with a semantic compilation pipeline that converts design documents into responsive, deterministic WPF/XAML.
+
 > **Fork Repository**: [linnnn89/Vellum-Agent-Bridge](https://github.com/linnnn89/Vellum-Agent-Bridge)  
-> Experimental Vellum fork for Vibe Coding, semantic UI specs and Vellum-to-WPF workflows.  
-> Upstream: [wieslawsoltes/Vellum](https://github.com/wieslawsoltes/Vellum)
+> **Upstream Project**: [wieslawsoltes/Vellum](https://github.com/wieslawsoltes/Vellum) by Wiesław Šoltés.
 
-**A little more possible.** A local-first design editor built with plain HTML, CSS, JavaScript, and a WebGPU-first renderer. Version **0.1.0**.
+---
 
-The interface follows the familiar design-editor arrangement: pages and layers on the left, a central canvas, a property inspector on the right, and a floating bottom toolbar. The starter file contains 171 editable layers: a desktop product dashboard, a mobile focus app, palette and typography boards, and reusable UI pieces. It is not a flattened screenshot.
+## Overview
 
-## GitHub Pages and CI
+Design tools excel at visual expression, while UI frameworks require explicit layout flow, star sizing, and data binding. Direct "pixel-to-code" generators often produce brittle absolute coordinates, while raw LLMs frequently corrupt layout structures when asked to tweak code.
 
-**Editor:** https://linnnn89.github.io/Vellum-Agent-Bridge/  
-**Portable download:** https://linnnn89.github.io/Vellum-Agent-Bridge/Vellum.html  
-**Workflow:** [CI and GitHub Pages](https://github.com/linnnn89/Vellum-Agent-Bridge/actions/workflows/pages.yml)
-
-Initial repository setup: **Settings → Pages → Build and deployment → Source → GitHub Actions**. This is required before the first deployment. No custom domain or long-lived deployment secret is needed. After enabling Pages, run the workflow manually or push to `main`.
-
-Every pull request and push to `main` checks JavaScript/Python syntax, builds an allow-listed `_site/` artifact, and runs the browser integration suite against the built site at `/Vellum/?canvas`. This verifies project-relative asset loading rather than testing only the domain root. CI intentionally uses Canvas 2D on generic hosted runners; it does not claim to validate hardware WebGPU. Test reports and light/dark screenshots are uploaded as artifacts, and successful production runs deploy the tested site with GitHub's official Pages actions.
-
-Pull requests never receive deployment permissions. The deployment job runs only for `main` in this repository, after the build passes, and uses the `github-pages` environment. Concurrent deployments are serialized. The published artifact includes the modular editor, generated portable edition, license, `.nojekyll`, and SHA-256 checksums; tests and repository metadata are not published.
-
-```sh
-python3 -m pip install -r requirements-dev.txt
-python3 -m playwright install chromium
-python3 scripts/ci.py                  # build and browser checks
-python3 scripts/ci.py --skip-browser   # syntax and build only
-python3 -m http.server 8080 --directory _site --bind 127.0.0.1
-```
-
-The application itself still has no runtime package dependencies. Node.js is used only for CI syntax validation; Python builds the static artifact and drives optional browser tests.
-
-## Vellum → Semantic UI Spec → WPF
-
-This fork includes an experimental compiler at [`tools/vellum-wpf-bridge/`](tools/vellum-wpf-bridge/):
+**Vellum-Agent-Bridge** bridges this gap using a three-stage compiler architecture:
 
 ```text
-.vellum  →  Semantic UI Spec  →  WPF/XAML
+.vellum Document (Vector Design)
+       │
+       ▼  [vellum-wpf convert / validate]
+Semantic UI Spec (Self-Contained IR)
+       │
+       ├─── (Optional) Agent Refinement Patch [vellum-wpf refine-apply]
+       │       ▲
+       │       └── Safe AI Modification (Semantic Whitelist Only)
+       ▼
+WPF / XAML Code (Deterministic, Star-Track Grid, Direct .NET Build)
 ```
 
-It keeps layout sizing (`fixed` / `fill`) separate from Vellum anchoring (`constraintH` / `constraintV`). Auto Layout with a main-axis fill becomes a Grid with star tracks; freeform frames fall back to Canvas.
+1. **Design Layer**: Create or edit interfaces in Vellum, a zero-dependency WebGPU editor.
+2. **Intermediate Representation (IR)**: Normalize geometry into a declarative `ui-spec.json` following [`schemas/ui-spec.schema.json`](tools/vellum-wpf-bridge/schemas/ui-spec.schema.json).
+3. **Safe AI Refinement**: AI agents modify only semantic metadata (text, commands, tooltips, accessibility) via atomic JSON patches, while layout structure and styles remain strictly immutable.
+4. **Code Generation**: Emit clean, human-readable WPF/XAML that builds immediately with `dotnet build`.
 
-```sh
-cd tools/vellum-wpf-bridge
-$env:PYTHONPATH="src"; python -m vellum_wpf_bridge convert samples/tabletop-chat.vellum -o output
-python tests/run_tests.py
-```
+---
 
-Design brief (with completion / deprecation status): [`初版设计.md`](初版设计.md). Tool usage: [`tools/vellum-wpf-bridge/README.md`](tools/vellum-wpf-bridge/README.md).
+## Key Features
 
-## Run
+### 1. Local-First WebGPU Design Editor
+- **Zero Runtime Dependencies**: Written in vanilla HTML, CSS, and modern JavaScript (ES modules). No bundlers, npm packages, or web frameworks required.
+- **Dual-Backend Rendering**: Instanced WebGPU pipeline emitting a single draw call per scene, with automatic fallback to Canvas 2D.
+- **Single-File Portable Edition**: Run `python3 build.py` to produce a completely self-contained `Vellum.html` (approx. 260 KB) that runs offline.
+- **Bilingual Interface**: Seamless real-time switching between English and 简体中文 through both the Settings modal and top-bar toggle button.
+- **Full Vector Editing**: Frames, auto-layout with gap/padding, typography, Bézier curves, design tokens, linked components, and 80 levels of undo/redo.
 
-### Portable edition
+### 2. Semantic UI Spec (Self-Contained IR)
+- **Framework-Agnostic**: Encapsulates component hierarchy, sizing modes (`fixed` vs. `fill`), alignment constraints, and color resources.
+- **Self-Contained**: Color tokens and shared assets reside directly inside `UiSpec.resources`, enabling standalone generation without original `.vellum` sources.
+- **Strict Schema & Source Validation**: Verifies document integrity, acyclic parent-child trees, finite numeric bounds, and unique layer IDs.
 
-Build with `python3 build.py`, then open `Vellum.html`. It contains the entire application, including its editable starter document, with no runtime downloads. For the most predictable WebGPU behavior, serve it from localhost or HTTPS rather than relying on browser-specific `file:` behavior.
+### 3. Safe Agent Refinement Pipeline
+- **Immutable Layout & Style**: Prevents LLMs from breaking layouts. Structural fields (`id`, `type`, `layout.*`, `style.*`, `children`) cannot be modified by patches.
+- **Semantic Whitelist**: Agents can safely refine `name`, `props.text`, `props.command`, `props.tooltip`, `props.accessibleName`, `props.helpText`, and `props.semanticRole`.
+- **Atomic Application**: Validates `baseSpecSha256` and node existence before applying changes, generating a complete audit trail in `refinement-report.json`.
 
-### Modular source
+### 4. Deterministic WPF/XAML Generation
+- **Responsive Layout Mapping**:
+  - Auto-layout with main-axis fill compiles to WPF `Grid` with star tracks (`*`), with gaps modeled via dedicated spacer rows/columns.
+  - Auto-layout with fixed sizing compiles to `StackPanel` with trailing item margins.
+  - Freeform containers gracefully fall back to `Canvas` with physical design dimensions preserved.
+- **Correct Layout Semantics**: Container padding wraps inner panels in `<Border Padding="..." ...>` rather than misapplying `Margin`.
+- **Clean Bindings**: Placeholders remain out of `TextBox.Text` (stored in metadata/tooltip), and deterministic `x:Name` tags are emitted only for actionable or bound controls.
 
-From this directory:
+---
+
+## Quick Start
+
+### Running the Editor
+
+#### Option A: Modular Source (Recommended for development)
+Serve the repository root with any static file server:
 
 ```sh
 python3 -m http.server 8080 --bind 127.0.0.1
 ```
 
-Open `http://localhost:8080/`. There is no npm install, frontend framework, bundler, WebAssembly module, CDN, analytics service, or backend dependency.
+Open `http://localhost:8080/` in a browser supporting WebGPU (Chrome, Edge, Firefox Nightly, or Safari 17+).
 
-The lower-left renderer badge reports the actual active backend. WebGPU needs a compatible browser/device and a secure context. Missing adapters, initialization failures, device loss, and raster-atlas exhaustion trigger the Canvas 2D fallback. Append `?canvas` to force that fallback for comparison.
+#### Option B: Standalone Portable File
+```sh
+python3 build.py
+```
+Open the generated `Vellum.html` directly in your browser.
 
-## Editing that is implemented
+---
 
-| Area | Implementation |
-| --- | --- |
-| Workspace | Light/dark themes, pages, searchable layer tree, collapsible groups, hide/lock controls, command palette, shortcuts, grid, rulers, zoom and pan. |
-| Geometry | Rectangles, ellipses, frames, lines, editable polygon/Bézier paths, rotation, on-canvas resize handles, multi-selection, marquee selection, nudging, alignment, distribution, grouping, layer order and hierarchy changes. |
-| Typography | Editable multiline Unicode text, wrapping, font family/size/weight, italic, underline, line-through in the model, line height, letter spacing, alignment, case conversion, explicit LTR/RTL direction, and user-imported font files. |
-| Appearance | Solid and linear-gradient fills, strokes, opacity, rounded corners, basic drop shadows and nested rounded-frame clipping. |
-| Layout | Horizontal/vertical auto layout with gap, padding and cross-axis alignment; left/right/center/stretch/scale and top/bottom constraints on frame children. |
-| Components | Main components, linked instances, propagation of existing-node properties and per-property overrides. Assets also include editable button/card/badge insertions. |
-| Design tokens | Document-local color and typography tokens. Color-token editing remaps exact matching colors across all pages. JSON token export. |
-| Files | Debounced local saving through IndexedDB with localStorage fallback, portable `.vellum` JSON, image placement, PNG export and editable SVG export. |
-| Preview | Frame presentation, next/previous navigation and click-to-navigate prototype links. |
-| History | 80 document-level undo/redo entries, drag transaction boundaries and reversible document replacement. Image/font strings are shared by reference between history entries, rather than copied into each geometry snapshot. |
+### Installing the Bridge CLI
 
-### Useful keys
+The bridge tool resides under `tools/vellum-wpf-bridge` and requires **Python 3.10+**:
 
-`V` move, `F` frame, `R` rectangle, `O` ellipse, `L` line, `P` pen, `T` text, `H` hand. Hold Space to pan; Ctrl/Cmd + scroll zooms around the pointer. Shift+1 fits the page, Shift+2 fits the selection, and Shift+0 sets 100%. Ctrl/Cmd+K opens the command palette.
+```sh
+cd tools/vellum-wpf-bridge
+pip install -e .
+```
 
-Double-click text to edit it. Double-click a path to edit anchors and handles. While drawing a path, click for an anchor, drag for Bézier handles, press Enter to finish, or click its first anchor to close it. Alt-drag a handle to break tangent symmetry.
+Once installed, the `vellum-wpf` command is globally accessible in your environment.
 
-Drag a layer row to reorder it. Shift-drop a row onto a frame/group to reparent it while retaining its world transform. Double-click a page or layer name to rename it. Double-click a component in Assets to insert an instance.
+---
 
-## Rendering architecture
+### CLI Command Reference
 
-The WebGPU backend packs painter-ordered primitives into a growable storage buffer and emits **one instanced scene draw call**. A 128-byte instance contains its affine transform, dimensions, fill/stroke parameters, raster coordinates and clip-chain pointer. Rounded rectangles and ellipses use analytical signed-distance coverage; text, general paths and placed images use a cached four-layer texture atlas.
+#### 1. Validate a `.vellum` file
+Check document structure, format version, unique layer IDs, and numeric bounds:
 
-Browser text shaping is intentionally retained: complete text layers are rasterized with Canvas 2D and uploaded only when their content/style or quantized resolution changes. This is a text-layer atlas, **not** a custom glyph shaper or MSDF font engine. General Bézier paths are also raster-cached; they are not tessellated on the GPU.
+```sh
+vellum-wpf validate samples/tabletop-chat.vellum
+```
 
-CPU-side world transforms use JavaScript numbers. GPU translation and clip offsets are rebased relative to the camera before conversion to float32. The renderer culls against world-space bounds, preserves painter order, supports transformed ancestor clip chains, caps raster resolution and draws only when invalidated. Selection chrome uses a separate Canvas 2D overlay. The Canvas fallback also caches text rasters.
+#### 2. Convert `.vellum` to Semantic UI Spec and WPF/XAML
+Run the end-to-end compiler pipeline:
 
-See `ARCHITECTURE.md` for the data flow and extension points.
+```sh
+vellum-wpf convert samples/tabletop-chat.vellum -o output
+```
 
-## Verification
+Outputs:
+- `output/ui-spec.json`: Standardized Semantic UI Spec IR.
+- `output/MainWindow.xaml`: Main window XAML.
+- `output/Resources.xaml`: Shared color brush dictionary.
+- `output/App.xaml`: Application definition.
+- `output/conversion-report.json`: Compilation statistics and diagnostics.
 
-`tests/results.json` records **36 passing browser integration checks** for the delivered implementation. They cover pointer-based drawing/move/resize, undo/redo, grouping, Unicode text editing, typography settings, component propagation/overrides, auto layout, frame constraints, Bézier creation, embedded image import, file round-tripping, malformed document rejection, undoing document replacement with image assets, PNG/SVG output, preview, themes, command execution, responsive chrome and a 5,000-shape scene.
+#### 3. Standalone Generation from `ui-spec.json`
+Compile directly from IR without touching the source `.vellum`:
 
-**Environment boundary:** these checks ran in Chromium with an inline, opaque-origin document because normal navigation was blocked in the test environment. The exercised backend was **Canvas 2D**. Native WebGPU execution and actual browser-storage persistence were **not runtime-verified** there. The report and screenshots say which backend was used. The recorded timing is CPU scene preparation/submission time, not GPU execution time or an FPS benchmark.
+```sh
+vellum-wpf generate output/ui-spec.json -o output-wpf
+```
 
-Run the same suite against a normal secure localhost context to exercise your actual adapter:
+#### 4. Validate an Agent Patch
+Check whether an agent modification complies with the schema and semantic whitelist:
+
+```sh
+vellum-wpf refine-validate output/ui-spec.json path/to/patch.json
+```
+
+#### 5. Apply an Agent Patch
+Atomically apply approved modifications and produce an updated spec and audit report:
+
+```sh
+vellum-wpf refine-apply output/ui-spec.json path/to/patch.json -o refined-output
+```
+
+---
+
+### Building the Generated WPF Demo
+
+A complete .NET sample project is included at [`tools/vellum-wpf-bridge/samples/generated-wpf-demo/`](tools/vellum-wpf-bridge/samples/generated-wpf-demo/):
+
+```sh
+cd tools/vellum-wpf-bridge/samples/generated-wpf-demo
+dotnet build GeneratedWpfDemo.csproj
+dotnet run --project GeneratedWpfDemo.csproj
+```
+
+The sample compiles with **0 errors and 0 warnings** under modern .NET SDKs.
+
+---
+
+## Verification & Quality Assurance
+
+### Layout Contract Canary (`260 | * | 260`)
+To guarantee responsive behavior, the bridge enforces an automated resize canary test. A three-column layout must allocate expansion delta exclusively to the center star track:
+
+$$\begin{aligned}
+\text{Width } 1280\text{px} &\longrightarrow 260 \mid 760 \mid 260 \\
+\text{Width } 1600\text{px} &\longrightarrow 260 \mid 1080 \mid 260 \\
+\Delta &\longrightarrow 0 \mid +320 \mid 0
+\end{aligned}$$
+
+Run bridge automated tests:
+```sh
+cd tools/vellum-wpf-bridge
+python tests/run_tests.py
+```
+
+### Browser Test Suite
+The editor includes browser integration tests exercising drawing, auto-layout, typography, undo/redo, component propagation, and export:
 
 ```sh
 python3 -m pip install -r requirements-dev.txt
 python3 -m playwright install chromium
-# In another terminal, from the project directory:
-python3 -m http.server 8765 --bind 127.0.0.1
-# Then:
-python3 tests/smoke.py --url http://localhost:8765/
+python3 scripts/ci.py --skip-browser   # Syntax and build validation
 ```
 
-Fresh reports and screenshots are written to `test-results/`. Set `CHROMIUM_EXECUTABLE` to use a particular browser binary. `--inline` runs the fallback-only, network-independent variant used for the supplied report. Test tooling is optional and not needed to run the editor.
+---
 
-## Deliberate scope boundaries
-
-This is a substantial working first version, **not complete Figma product parity**. It does not implement multiplayer/CRDT collaboration, comments, a plugin marketplace, `.fig` compatibility, vector Boolean operations, GPU path tessellation, arbitrary blend modes, masks beyond frame clipping, component variants or structural component-tree propagation. Auto layout does not include wrapping, hug/fill sizing or the full flex/grid constraint model.
-
-Each text layer has one style. Rich-text spans, editable OpenType feature tags, variable-font axis controls, explicit hyphenation, full typographic paragraph composition and text-on-path are not implemented. Font shaping and script coverage depend on the browser and available/imported fonts. Inter is the preferred family name, with system fallbacks; **no font binaries are bundled**. Only load and embed fonts you have permission to distribute. SVG exports reference font families rather than embedding fonts or outlining glyphs.
-
-SVG files can be placed as image assets; their internal paths are not imported into the editable scene graph. Exported SVG preserves the editor's native shapes and text. Shadows are an approximation and may differ slightly between analytical GPU coverage, Canvas and SVG filters. Image export has a 64-megapixel / 16,384-pixel-per-side guard. UI chrome adapts to smaller screens, but dense property editing remains desktop-oriented.
-
-Local save is not a cloud backup. A browser profile, origin or site-data change can make saved data unavailable. Export `.vellum` files for durable copies. Vellum is an independent working name, not a trademark-availability claim or an affiliation with Figma.
-
-## Source layout
+## Project Structure
 
 ```text
-index.html             Editor shell
-styles.css             Semantic design tokens and light/dark chrome
-src/document.js        Scene model, affine transforms, history, validation, starter file
-src/renderer.js        WGSL pipeline, raster atlas, text layout, image store, fallback, PNG
-src/app.js             Editing controller, input state machines, inspector, saving, commands
-src/svg.js             Vector/text SVG export
-src/icons.js           Inline SVG editor icons
-build.py               Standard-library-only portable HTML builder
-Vellum.html             Generated single-file edition (not tracked)
-scripts/build_site.py  Allow-listed GitHub Pages artifact builder
-scripts/ci.py          Syntax, build, and project-subpath browser checks
-.github/workflows/pages.yml  CI and GitHub Pages publishing
-tests/smoke.py          Browser integration suite
+.
+├── index.html                 # Editor HTML shell
+├── styles.css                 # Editor design tokens & dark/light theme
+├── src/                       # Editor frontend ES modules
+│   ├── app.js                 # Controller, state machines, inspector & shortcuts
+│   ├── document.js            # Scene graph model, affine matrices, parse & history
+│   ├── renderer.js            # WGSL WebGPU pipeline, atlas allocator & Canvas fallback
+│   ├── i18n.js                # Bilingual dictionary & reactive translation engine
+│   ├── icons.js               # Editor UI vector icons
+│   └── svg.js                 # Vector SVG export engine
+├── tools/
+│   └── vellum-wpf-bridge/     # Compiler from Vellum to Semantic UI Spec & WPF
+│       ├── pyproject.toml     # Packaging configuration
+│       ├── schemas/           # JSON Schemas for UI Spec & Agent Patch
+│       ├── src/               # Bridge Python package
+│       ├── samples/           # Canonical .vellum samples & generated WPF demo
+│       └── tests/             # Compiler unit tests & layout canary suite
+├── docs/                      # Architectural specifications & internal constraints
+├── scripts/                   # CI scripts and site generation
+└── build.py                   # Portable single-file HTML packager
 ```
 
-After modifying source, regenerate the portable edition with `python3 build.py`.
+---
 
-## Reference APIs
+## Specifications & Documentation
 
-The implementation uses the WebGPU specification and the browser Canvas APIs. References: `https://www.w3.org/TR/webgpu/`, `https://developer.mozilla.org/en-US/docs/Web/API/WebGPU_API`, `https://developer.mozilla.org/en-US/docs/Web/API/GPUCanvasContext/configure`, and `https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API`.
+- [Architecture & Rendering Pipeline](ARCHITECTURE.md)
+- [Internal Architectural Constraints & Rules](docs/SPEC_CONSTRAINTS.md)
+- [Semantic UI Spec JSON Schema](tools/vellum-wpf-bridge/schemas/ui-spec.schema.json)
+- [Agent Patch JSON Schema](tools/vellum-wpf-bridge/schemas/ui-spec-patch.schema.json)
+
+---
+
+## Credits & License
+
+- **Original Author**: Wiesław Šoltés ([wieslawsoltes/Vellum](https://github.com/wieslawsoltes/Vellum)).
+- **License**: Released under the [MIT License](LICENSE).

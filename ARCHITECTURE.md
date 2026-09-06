@@ -74,3 +74,37 @@ PNG export paints the relevant scene into a guarded offscreen Canvas at the requ
 The included report is an actual Chromium integration run with 36 passing checks. Its opaque origin forced Canvas 2D, so neither WebGPU execution nor persistent browser storage was verified in that environment. The WGSL source and backend are delivered, but there is no claimed hardware benchmark.
 
 `cpuMs` measures synchronous scene work and API submission, not GPU completion. The UI intentionally avoids inventing FPS. Future benchmarking should separately report input-to-frame latency, CPU scene assembly, shaping/rasterization, texture upload bytes/time, GPU timestamps when available, memory residency and cold/warm cache behavior. Use `?canvas` to obtain a deliberate fallback baseline on the same device.
+
+## 9. Semantic UI Spec and compilation bridge
+
+The `tools/vellum-wpf-bridge/` subsystem compiles `.vellum` files into responsive desktop applications through a three-stage pipeline:
+
+```text
+.vellum JSON  -->  Semantic UI Spec (IR)  -->  [Safe Agent Patch]  -->  WPF/XAML
+```
+
+### Architecture and data flow
+1. **Source validation (`validator.py`)**: Enforces document schema version 1, unique layer IDs, finite numeric bounds (`x, y, w, h, rotation, opacity`), positive dimensions, and an acyclic scene hierarchy. Validation is strict and fails fast without silent defaults.
+2. **Document normalization (`vellum_adapter.py`)**: Rebuilds the parent-child hierarchy from flat, painter-ordered page nodes while maintaining z-index.
+3. **Semantic mapping and layout synthesis (`layout_contract.py`, `semantic_mapper.py`)**: Orthogonalizes sizing (`fixed` vs. `fill`), anchoring (`constraintH`/`constraintV`), and flow (`stack` vs. `grid`). Auto-layout frames with fill become `Grid` panels with star tracks (`*`) and spacer tracks for gaps. Fixed flows become `StackPanel` elements with trailing margins. Freeform frames fall back to `Canvas` with physical design dimensions and diagnostic logging.
+4. **Self-contained IR (`ui-spec.json`)**: Document tokens and extracted color values are compiled directly into `UiSpec.resources`. The spec is 100% self-contained, allowing code generators to operate independently of `.vellum` source files.
+5. **Safe agent refinement (`refiner.py`)**: Allows AI agents to refine semantic intent via JSON patches (`ui-spec-patch.schema.json`). Changes are strictly confined to a whitelist (`name`, `props.text`, `props.command`, `props.tooltip`, `props.accessibleName`, `props.helpText`). Structural and visual design properties (`layout.*`, `style.*`, `children`, `resources`) are immutable. Patches are validated against a SHA-256 hash of the base spec and applied atomically with audit logging (`refinement-report.json`).
+6. **XAML code synthesis (`wpf_generator.py`)**: Emits deterministic `MainWindow.xaml`, `Resources.xaml`, and `App.xaml`. Wraps padded containers in `<Border Padding="..." ...>` rather than misapplying margins. Places placeholder text in `Tag`/`ToolTip` metadata rather than `TextBox.Text`. Emits deterministic `x:Name` identifiers only for actionable or bound controls.
+
+### Dependency boundary
+- **Runtime dependencies**: **Zero**. The compiler core relies strictly on the Python 3.10+ standard library (`json`, `hashlib`, `re`, `math`, `argparse`, `dataclasses`, `pathlib`).
+- **Packaging**: Standard `setuptools >= 61.0` via `pyproject.toml` supporting `pip install -e .`.
+- **Target framework**: Generated projects compile against modern .NET SDKs (8.0, 9.0, 10.0) with zero external C# NuGet package dependencies.
+
+## 10. Localization and UI decoupling (i18n)
+
+The editor interface text is fully decoupled from DOM markup and business logic via `src/i18n.js`:
+
+### Architecture and implementation logic
+1. **Dictionary registry**: Bundles native `en-US` and `zh-CN` string tables for topbar navigation, menus, dialogs, inspector sections, tooltips, and status indicators.
+2. **Declarative DOM binding**: HTML elements declare translation targets using `data-i18n` (textContent), `data-i18n-title` (title attribute), and `data-i18n-aria` (aria-label).
+3. **Reactive synchronization**: `i18n.setLocale()` updates `document.documentElement.lang`, translates all declared DOM elements, and invokes registered callbacks to refresh dynamic components (inspector panels, menus, and toasts).
+4. **Persistence & UI integration**: Language selection is stored in `localStorage` under `vellum-options` and accessible via both the Settings dialog and a dedicated topbar toggle button (`中 / EN`).
+
+### Dependency boundary
+- **Dependencies**: **Zero**. Implemented entirely in vanilla modern JavaScript without external libraries or polyfills. Bundled seamlessly into the portable single-file edition by `build.py`.

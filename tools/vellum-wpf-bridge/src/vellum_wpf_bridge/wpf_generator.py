@@ -9,10 +9,12 @@ Hard constraints:
 """
 
 from dataclasses import dataclass
-from typing import Dict, List, Optional
+import re
+from typing import Dict, List, Optional, Set
 
 from .layout_contract import expand_tracks_with_spacers, physical_index
 from .models import UiNode, UiSpec
+from .report import ConversionReport
 from .resources import ResourceManager
 from .utils import escape_xml, fmt_length, to_pascal_case
 
@@ -31,10 +33,47 @@ class EmitContext:
 class WpfGenerator:
     """Generates clean, readable, valid WPF XAML files from a UiSpec."""
 
-    def __init__(self, resource_manager: Optional[ResourceManager] = None):
+    def __init__(
+        self,
+        resource_manager: Optional[ResourceManager] = None,
+        report: Optional[ConversionReport] = None,
+    ):
         self.rm = resource_manager or ResourceManager()
+        self.report = report
+        self._used_names: Set[str] = set()
+
+    def _sanitize_xaml_name(self, name: str) -> str:
+        pascal = to_pascal_case(name)
+        if not pascal:
+            return "Element"
+        cleaned = re.sub(r"[^a-zA-Z0-9_]", "_", pascal)
+        if cleaned and cleaned[0].isdigit():
+            cleaned = "_" + cleaned
+        return cleaned or "Element"
+
+    def _resolve_x_name(
+        self, node: UiNode, default_prefix: str = "Element", force: bool = True
+    ) -> Optional[str]:
+        if not force:
+            if not (
+                node.props.get("binding")
+                or node.props.get("bind")
+                or node.props.get("xName")
+            ):
+                return None
+        raw_name = node.props.get("xName") or node.name or default_prefix
+        base_name = self._sanitize_xaml_name(raw_name)
+        candidate = base_name
+        counter = 2
+        while candidate in self._used_names:
+            candidate = f"{base_name}_{counter}"
+            counter += 1
+        self._used_names.add(candidate)
+        return candidate
 
     def generate_all(self, spec: UiSpec, app_namespace: str = "GeneratedWpfDemo") -> Dict[str, str]:
+        self._used_names = set()
+        self.rm.load_from_spec(spec)
         if spec.root:
             self.rm.collect_colors_from_tree(spec.root)
         self.rm.finalize_resources(min_occurrences=2)
@@ -43,6 +82,7 @@ class WpfGenerator:
             "MainWindow.xaml": self.generate_main_window_xaml(spec, app_namespace),
             "App.xaml": self.generate_app_xaml(app_namespace),
         }
+
 
     def generate_resources_xaml(self) -> str:
         lines = [
@@ -70,6 +110,7 @@ class WpfGenerator:
     def generate_main_window_xaml(
         self, spec: UiSpec, app_namespace: str = "GeneratedWpfDemo", class_name: str = "MainWindow"
     ) -> str:
+        self._used_names = set()
         bg_brush = self.rm.get_color_reference(spec.root.style.background if spec.root else None)
         if not bg_brush:
             bg_brush = "#1E1E24" if spec.theme == "dark" else "#FAFAFC"
@@ -143,39 +184,51 @@ class WpfGenerator:
             width = node.layout.width if node.layout.width is not None else node.layout.design_width
             if width is not None:
                 attrs.append(f'Width="{fmt_length(width)}"')
-        elif node.layout.width_mode == "fill" and not ctx.is_root:
+        elif node.layout.width_mode == "fill" and not ctx.is_root and ctx.parent_type != "canvas":
             attrs.append('HorizontalAlignment="Stretch"')
         if emit_h:
             height = node.layout.height if node.layout.height is not None else node.layout.design_height
             if height is not None:
                 attrs.append(f'Height="{fmt_length(height)}"')
-        elif node.layout.height_mode == "fill" and not ctx.is_root:
+        elif node.layout.height_mode == "fill" and not ctx.is_root and ctx.parent_type != "canvas":
             attrs.append('VerticalAlignment="Stretch"')
+
+        if ctx.parent_type == "canvas" and (node.layout.width_mode == "fill" or node.layout.height_mode == "fill"):
+            warning_msg = "responsive constraint lost on Canvas"
+            if warning_msg not in node.warnings:
+                node.warnings.append(warning_msg)
+            if self.report is not None:
+                self.report.add_diagnostic(
+                    "warning",
+                    "RESPONSIVE_CONSTRAINT_LOST_ON_CANVAS",
+                    warning_msg,
+                    node.id,
+                )
         return attrs
 
     def _should_emit_width(self, node: UiNode, ctx: EmitContext) -> bool:
         if ctx.is_root:
             return False
-        if ctx.in_star_column or node.layout.width_mode == "fill":
-            return False
         if ctx.parent_type == "canvas":
             return True
+        if ctx.in_star_column or node.layout.width_mode == "fill":
+            return False
         return node.layout.width is not None or node.layout.design_width is not None
 
     def _should_emit_height(self, node: UiNode, ctx: EmitContext) -> bool:
         if ctx.is_root:
             return False
-        if ctx.in_star_row or node.layout.height_mode == "fill":
-            return False
         if ctx.parent_type == "canvas":
             return True
+        if ctx.in_star_row or node.layout.height_mode == "fill":
+            return False
         return node.layout.height is not None or node.layout.design_height is not None
 
     def _generate_button(self, node: UiNode, indent_level: int, ctx: EmitContext) -> List[str]:
         indent = "    " * indent_level
         attrs = []
-        pascal_name = to_pascal_case(node.name)
-        if pascal_name and "Button" in pascal_name:
+        pascal_name = self._resolve_x_name(node, default_prefix="Button", force=True)
+        if pascal_name:
             attrs.append(f'x:Name="{pascal_name}"')
         attrs.append(f'Content="{escape_xml(node.props.get("text", "Button"))}"')
         cmd = node.props.get("command")
@@ -196,10 +249,19 @@ class WpfGenerator:
     def _generate_input(self, node: UiNode, indent_level: int, ctx: EmitContext) -> List[str]:
         indent = "    " * indent_level
         attrs = []
-        pascal_name = to_pascal_case(node.name)
+        pascal_name = self._resolve_x_name(node, default_prefix="Input", force=True)
         if pascal_name:
             attrs.append(f'x:Name="{pascal_name}"')
-        attrs.append(f'Text="{escape_xml(node.props.get("placeholder", ""))}"')
+        
+        # TextBox.Text must remain empty unless explicitly set in props["text"]
+        if node.props.get("text"):
+            attrs.append(f'Text="{escape_xml(str(node.props["text"]))}"')
+        
+        placeholder = node.props.get("placeholder")
+        if placeholder:
+            attrs.append(f'ToolTip="{escape_xml(str(placeholder))}"')
+            attrs.append(f'Tag="{escape_xml(str(placeholder))}"')
+
         attrs.extend(self._slot_attrs(node, ctx))
         attrs.extend(self._size_attrs(node, ctx))
         bg = self.rm.get_color_reference(node.style.background)
@@ -222,7 +284,7 @@ class WpfGenerator:
     def _generate_text(self, node: UiNode, indent_level: int, ctx: EmitContext) -> List[str]:
         indent = "    " * indent_level
         attrs = []
-        pascal_name = to_pascal_case(node.name)
+        pascal_name = self._resolve_x_name(node, default_prefix="Text", force=False)
         if pascal_name:
             attrs.append(f'x:Name="{pascal_name}"')
         attrs.append(f'Text="{escape_xml(node.props.get("text", ""))}"')
@@ -282,11 +344,22 @@ class WpfGenerator:
             node.style.corner_radius
             or node.style.border_color
             or (node.style.background and not ctx.is_root)
+            or node.layout.padding
         )
         inner_indent = indent_level
         border_opened = False
 
-        if has_border_props and not ctx.is_root:
+        if ctx.is_root:
+            if node.layout.padding:
+                pad = node.layout.padding
+                pad_str = fmt_length(pad) if isinstance(pad, (int, float)) else ",".join(str(p) for p in pad)
+                lines.append(f'{indent}<Border Padding="{pad_str}">')
+                inner_indent += 1
+                border_opened = True
+                child_lines = self._generate_inner_layout(node, inner_indent, ctx, has_border_parent=True)
+            else:
+                child_lines = self._generate_inner_layout(node, inner_indent, ctx, has_border_parent=False)
+        elif has_border_props:
             border_attrs = self._slot_attrs(node, ctx) + self._size_attrs(node, ctx)
             bg = self.rm.get_color_reference(node.style.background)
             if bg:
@@ -328,7 +401,7 @@ class WpfGenerator:
             container_tag = "StackPanel"
 
         attrs: List[str] = []
-        pascal_name = to_pascal_case(node.name)
+        pascal_name = self._resolve_x_name(node, default_prefix="Panel", force=False)
         if pascal_name and not has_border_parent and not ctx.is_root:
             attrs.append(f'x:Name="{pascal_name}"')
         if not has_border_parent:
@@ -337,14 +410,7 @@ class WpfGenerator:
         if container_tag == "StackPanel":
             direction = "Horizontal" if node.layout.direction == "horizontal" else "Vertical"
             attrs.append(f'Orientation="{direction}"')
-        if ctx.is_root and node.layout.padding:
-            pad = node.layout.padding
-            pad_str = fmt_length(pad) if isinstance(pad, (int, float)) else ",".join(str(p) for p in pad)
-            attrs.append(f'Margin="{pad_str}"')
-        elif not has_border_parent and node.layout.padding and container_tag != "Canvas":
-            pad = node.layout.padding
-            pad_str = fmt_length(pad) if isinstance(pad, (int, float)) else ",".join(str(p) for p in pad)
-            attrs.append(f'Margin="{pad_str}"')
+
 
         attr_str = (" " + " ".join(attrs)) if attrs else ""
         if not node.children and not node.layout.columns and not node.layout.rows:

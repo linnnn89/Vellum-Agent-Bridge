@@ -18,7 +18,8 @@ from .models import (
     VellumNode,
 )
 from .report import ConversionReport
-from .utils import to_pascal_case
+from .resources import ResourceManager
+from .utils import normalize_hex_color, to_pascal_case
 
 
 _CONTAINER_NAME_MARKERS = (
@@ -79,6 +80,16 @@ class SemanticMapper:
                 "Multiple page roots were wrapped in an absolute canvas.",
             )
 
+        resources: Dict[str, str] = {}
+        if doc.tokens:
+            color_tokens = doc.tokens.get("colors", [])
+            for item in color_tokens:
+                name = item.get("name", "")
+                val = normalize_hex_color(item.get("value"))
+                if val and name:
+                    key = ResourceManager.token_name_to_resource_key(name)
+                    resources[key] = val
+
         spec = UiSpec(
             version="0.1",
             name=to_pascal_case(doc.name) or "MainWindow",
@@ -86,9 +97,11 @@ class SemanticMapper:
             width=window_width,
             height=window_height,
             theme=theme,
+            resources=resources,
             root=root_ui_node,
         )
         return spec
+
 
     def _map_node(self, node: VellumNode, is_window_root: bool = False) -> UiNode:
         source = UiSource(
@@ -369,4 +382,16 @@ class SemanticMapper:
             "Container has no auto-layout; children keep local coordinates on a Canvas.",
             node.id,
         )
+        for child_ui in mapped:
+            if child_ui.layout.width_mode == "fill" or child_ui.layout.height_mode == "fill":
+                warning_msg = "responsive constraint lost on Canvas"
+                if warning_msg not in child_ui.warnings:
+                    child_ui.warnings.append(warning_msg)
+                self.report.add_diagnostic(
+                    "warning",
+                    "RESPONSIVE_CONSTRAINT_LOST_ON_CANVAS",
+                    warning_msg,
+                    child_ui.id,
+                )
         return UiLayout(type="absolute"), mapped
+

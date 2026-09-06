@@ -6,6 +6,7 @@ from typing import Any, Dict, List, Optional, Union
 
 from .models import VellumDocument, VellumNode, VellumPage
 from .utils import normalize_hex_color
+from .validator import validate_vellum_dict
 
 
 class VellumDocumentAdapter:
@@ -21,17 +22,12 @@ class VellumDocumentAdapter:
         return self.load_from_dict(data)
 
     def load_from_dict(self, data: Dict[str, Any]) -> VellumDocument:
-        if not isinstance(data, dict):
-            raise ValueError("Invalid Vellum document: root must be a JSON object.")
+        validate_vellum_dict(data)
 
-        fmt = data.get("format", "")
-        version = data.get("version", 0)
-        if fmt != "vellum" or version != 1:
-            raise ValueError(
-                f"Unsupported document format: expected format='vellum', version=1. Got format={fmt}, version={version}"
-            )
-
+        fmt = data["format"]
+        version = data["version"]
         name = data.get("name", "Untitled")
+
         tokens = data.get("tokens", {})
         assets = data.get("assets", {})
         pages_data = data.get("pages", [])
@@ -90,13 +86,14 @@ class VellumDocumentAdapter:
         if parent_id is not None:
             parent_id = str(parent_id)
 
-        # Geometry
-        x = float(d.get("x", 0.0))
-        y = float(d.get("y", 0.0))
-        w = float(d.get("w", 0.0))
-        h = float(d.get("h", 0.0))
-        rotation = float(d.get("rotation", 0.0))
-        opacity = float(d.get("opacity", 1.0))
+        # Geometry - strictly required, not silently defaulted
+        x = float(d["x"])
+        y = float(d["y"])
+        w = float(d["w"])
+        h = float(d["h"])
+        rotation = float(d["rotation"])
+        opacity = float(d["opacity"])
+
         visible = bool(d.get("visible", True))
         locked = bool(d.get("locked", False))
         clip = bool(d.get("clip", False))
