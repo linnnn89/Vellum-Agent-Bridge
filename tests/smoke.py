@@ -36,6 +36,20 @@ async def main(args):
    if actual!=args.expect_backend: raise AssertionError(f'Expected {args.expect_backend}, got {actual}')
   await check('Editor initializes with real scene graph', 'vellum.doc.nodes.length===171 && vellum.doc.data.pages.length===3')
   await check('Renderer produces scene instances', 'vellum.renderer.instanceCount>150 && ["WebGPU","Canvas 2D"].includes(vellum.renderer.backend)')
+  if not args.inline:
+   await check('Translations remain literal at HTML sinks', '''(async()=>{
+    const {i18n}=await import(new URL('src/i18n.js',location.href));
+    const dict=i18n.locales[i18n.currentLocale].topbar, old=dict.savedLocally;
+    const payload='<img data-audit-injection="yes"> & literal';
+    const root=document.createElement('div'), el=document.createElement('span');
+    el.setAttribute('data-i18n-html','topbar.savedLocally');root.append(el);
+    try {
+     dict.savedLocally=payload;i18n.translateDOM(root);await vellum.save();
+     const indicator=document.querySelector('#save-indicator');
+     return el.textContent===payload && el.children.length===0 &&
+      indicator.textContent.includes(payload) && !indicator.querySelector('[data-audit-injection]');
+    } finally {dict.savedLocally=old;await vellum.save();}
+   })()''')
   await page.locator('#dismiss-tip').click()
   await page.locator('[data-page]').last.click()
   await check('Page navigation', 'vellum.doc.page.name === "Playground" && vellum.doc.nodes.length===0')
@@ -53,6 +67,35 @@ async def main(args):
   await check('Redo reapplies transform', 'Math.abs(vellum.doc.get(testRect).x-originalX-50)<1')
   await page.locator('input[data-prop="w"]').fill('240');await page.locator('input[data-prop="w"]').press('Enter');await page.locator('input[data-prop="h"]').click()
   await check('Inspector dimension binding', 'vellum.doc.get(testRect).w===240')
+  await check('Inspector selection heading keeps icon DOM', '''(()=>{
+    const heading=document.querySelector('#inspector .section-heading');
+    const svg=heading&&heading.querySelector('svg');
+    const name=heading&&heading.querySelector('.selection-name');
+    return !!svg && !!name && !heading.textContent.includes('<svg') && name.textContent.length>0;
+  })()''')
+  if not args.inline:
+   await check('Rename dialog titles keep special characters', '''(async()=>{
+    const {i18n}=await import(new URL('src/i18n.js',location.href));
+    const dict=i18n.locales[i18n.currentLocale].contextMenu, old=dict.rename;
+    const title='Rename A & B <C>';
+    const layer='X & Y <Z>';
+    const node=vellum.doc.get(testRect);
+    const previous=node.name;
+    dict.rename=title;
+    node.name=layer;
+    vellum.select([testRect]);
+    try {
+     vellum.actions.rename();
+     const h2=document.querySelector('#modal h2');
+     const input=document.querySelector('#prompt-value');
+     return !!h2 && h2.textContent===title && !h2.innerHTML.includes('&amp;amp;') &&
+      !!input && input.value===layer;
+    } finally {
+     dict.rename=old;
+     node.name=previous;
+     document.querySelector('[data-close-modal]')?.click();
+    }
+   })()''')
   # Touch the resize handle at the actual transformed corner.
   pos=await page.evaluate('(()=>{const n=vellum.doc.get(testRect),w=vellum.doc.world(testRect),c=vellum.state.camera;return {x:(w.matrix[4]+n.w)*c.zoom+c.x,y:(w.matrix[5]+n.h)*c.zoom+c.y}})()')
   await page.mouse.move(canvas['x']+pos['x'],canvas['y']+pos['y']);await page.mouse.down();await page.mouse.move(canvas['x']+pos['x']+60,canvas['y']+pos['y']+30,steps=5);await page.mouse.up()

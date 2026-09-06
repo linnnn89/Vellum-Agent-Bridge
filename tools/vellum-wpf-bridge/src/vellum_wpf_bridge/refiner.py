@@ -9,9 +9,12 @@ from dataclasses import dataclass, field
 import hashlib
 import json
 from pathlib import Path
+import re
 from typing import Any, Dict, List, Optional, Set, Tuple, Union
 
 from .models import UiSpec
+from .utils import is_binding_identifier
+from .spec_validator import validate_ui_spec_dict, UiSpecValidationError
 
 
 ALLOWED_PATCH_PATHS: Set[str] = {
@@ -34,6 +37,8 @@ FORBIDDEN_PREFIXES: Tuple[str, ...] = (
     "resources",
 )
 
+_SHA256_HEX_RE = re.compile(r"^[a-f0-9]{64}$")
+
 
 class PatchValidationError(ValueError):
     """Raised when an agent refinement patch fails validation."""
@@ -52,15 +57,15 @@ class RefinementChange:
         return {
             "nodeId": self.node_id,
             "path": self.path,
-            "oldValue": self.old_value,
-            "newValue": self.new_value,
-            "reason": self.reason,
+            "oldValue": {"redacted": True},
+            "newValue": {"redacted": True},
+            "reason": {"redacted": True},
         }
 
 
 @dataclass
 class RefinementReport:
-    version: int = 1
+    version: int = 2
     base_spec_sha256: str = ""
     operations_count: int = 0
     changes: List[RefinementChange] = field(default_factory=list)
@@ -117,6 +122,10 @@ class SafeAgentRefiner:
         raw_file_sha256: Optional[str] = None,
     ) -> List[str]:
         """Validate patch against spec. Returns list of warning/info notes or raises PatchValidationError."""
+        try:
+            validate_ui_spec_dict(spec_data)
+        except UiSpecValidationError as e:
+            raise PatchValidationError(f"Invalid base spec: {e}") from e
         if not isinstance(patch_data, dict):
             raise PatchValidationError("Invalid patch format: root must be a JSON object.")
 
@@ -124,16 +133,19 @@ class SafeAgentRefiner:
         if version != 1:
             raise PatchValidationError(f"Unsupported patch version: expected 1, got {version!r}")
 
-        expected_sha = patch_data.get("baseSpecSha256", "").lower()
-        if not expected_sha:
+        expected_sha = patch_data.get("baseSpecSha256", "")
+        if not isinstance(expected_sha, str) or not expected_sha:
             raise PatchValidationError("Patch is missing required 'baseSpecSha256' property.")
+        expected_sha = expected_sha.lower()
+        if not _SHA256_HEX_RE.fullmatch(expected_sha):
+            raise PatchValidationError("Patch 'baseSpecSha256' must be a 64-character hex SHA-256.")
 
+        # Spec identity is canonical JSON only. File-byte hashes are not a
+        # document identity: matching raw_file_sha256 would authorize a patch
+        # against unrelated bytes and is ignored on purpose.
+        _ = raw_file_sha256
         canonical_sha = compute_spec_canonical_sha256(spec_data).lower()
-        valid_shas = {canonical_sha}
-        if raw_file_sha256:
-            valid_shas.add(raw_file_sha256.lower())
-
-        if expected_sha not in valid_shas:
+        if expected_sha != canonical_sha:
             raise PatchValidationError(
                 f"baseSpecSha256 mismatch! Patch expected '{expected_sha}', but target spec hash is '{canonical_sha}'"
             )
@@ -190,6 +202,7 @@ class SafeAgentRefiner:
                 raise PatchValidationError(
                     f"Operation at index {idx} on node '{node_id}' missing 'value'."
                 )
+            _validate_patch_value(path, op["value"], idx, node_id)
 
         return [f"Verified {len(operations)} patch operations successfully."]
 
@@ -242,9 +255,26 @@ class SafeAgentRefiner:
             )
 
         report = RefinementReport(
-            version=1,
+            version=2,
             base_spec_sha256=base_sha,
             operations_count=len(changes),
             changes=changes,
         )
+        validate_ui_spec_dict(refined)
         return refined, report
+
+
+def _validate_patch_value(path: str, value: Any, idx: int, node_id: str) -> None:
+    """Whitelist value shape. Do not echo payloads: they may contain secrets or markup."""
+    if path == "props.command":
+        if not is_binding_identifier(value):
+            raise PatchValidationError(
+                f"Operation at index {idx} on node '{node_id}': "
+                "props.command must be a string identifier matching "
+                "[A-Za-z_][A-Za-z0-9_]*."
+            )
+        return
+    if not isinstance(value, str):
+        raise PatchValidationError(
+            f"Operation at index {idx} on node '{node_id}': '{path}' value must be a string."
+        )

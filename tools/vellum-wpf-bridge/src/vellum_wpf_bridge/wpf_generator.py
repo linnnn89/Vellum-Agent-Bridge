@@ -10,13 +10,15 @@ Hard constraints:
 
 from dataclasses import dataclass
 import re
-from typing import Dict, List, Optional, Set
+from typing import Dict, List, Optional, Set, Union
 
 from .layout_contract import expand_tracks_with_spacers, physical_index
 from .models import UiNode, UiSpec
 from .report import ConversionReport
+from .spec_validator import validate_ui_spec_model
+from .assets import export_assets
 from .resources import ResourceManager
-from .utils import escape_xml, fmt_length, to_pascal_case
+from .utils import escape_xaml_literal, escape_xml_comment, fmt_length, is_binding_identifier, is_dotted_identifier, to_pascal_case
 
 
 @dataclass
@@ -71,8 +73,10 @@ class WpfGenerator:
         self._used_names.add(candidate)
         return candidate
 
-    def generate_all(self, spec: UiSpec, app_namespace: str = "GeneratedWpfDemo") -> Dict[str, str]:
+    def generate_all(self, spec: UiSpec, app_namespace: str = "GeneratedWpfDemo") -> Dict[str, Union[str, bytes]]:
+        validate_ui_spec_model(spec)
         self._used_names = set()
+        app_namespace = _safe_namespace(app_namespace)
         self.rm.load_from_spec(spec)
         if spec.root:
             self.rm.collect_colors_from_tree(spec.root)
@@ -81,6 +85,7 @@ class WpfGenerator:
             "Resources.xaml": self.generate_resources_xaml(),
             "MainWindow.xaml": self.generate_main_window_xaml(spec, app_namespace),
             "App.xaml": self.generate_app_xaml(app_namespace),
+            **export_assets(spec.assets)[0],
         }
 
 
@@ -98,6 +103,7 @@ class WpfGenerator:
         return "\n".join(lines)
 
     def generate_app_xaml(self, app_namespace: str = "GeneratedWpfDemo") -> str:
+        app_namespace = _safe_namespace(app_namespace)
         return f"""<Application x:Class="{app_namespace}.App"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -110,7 +116,11 @@ class WpfGenerator:
     def generate_main_window_xaml(
         self, spec: UiSpec, app_namespace: str = "GeneratedWpfDemo", class_name: str = "MainWindow"
     ) -> str:
+        validate_ui_spec_model(spec)
         self._used_names = set()
+        app_namespace = _safe_namespace(app_namespace)
+        class_name = class_name if is_binding_identifier(class_name) else "MainWindow"
+        _, self._asset_refs = export_assets(spec.assets)
         bg_brush = self.rm.get_color_reference(spec.root.style.background if spec.root else None)
         if not bg_brush:
             bg_brush = "#1E1E24" if spec.theme == "dark" else "#FAFAFC"
@@ -122,7 +132,7 @@ class WpfGenerator:
             '        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"',
             '        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"',
             '        mc:Ignorable="d"',
-            f'        Title="{escape_xml(spec.name)}"',
+            f'        Title="{escape_xaml_literal(spec.name)}"',
             f'        Width="{fmt_length(spec.width)}"',
             f'        Height="{fmt_length(spec.height)}"',
             '        WindowStartupLocation="CenterScreen"',
@@ -140,8 +150,9 @@ class WpfGenerator:
         lines: List[str] = []
         if node.source and node.source.node_id:
             src_name = node.source.node_name or node.type
-            lines.append(f"{indent}<!-- Vellum: {node.source.node_id} / {escape_xml(src_name)} -->")
+            lines.append(f"{indent}<!-- Vellum: {escape_xml_comment(node.source.node_id)} / {escape_xml_comment(src_name)} -->")
 
+        start = len(lines)
         if node.type == "button":
             lines.extend(self._generate_button(node, indent_level, ctx))
         elif node.type == "input":
@@ -156,6 +167,14 @@ class WpfGenerator:
             lines.extend(self._generate_unknown(node, indent_level, ctx))
         else:
             lines.extend(self._generate_container(node, indent_level, ctx))
+        # Attach semantics to the outer element, including Border wrappers.
+        semantic_attrs = []
+        for prop, attr in (("tooltip", "ToolTip"), ("accessibleName", "AutomationProperties.Name"),
+                           ("helpText", "AutomationProperties.HelpText")):
+            if prop in node.props:
+                semantic_attrs.append(f'{attr}="{escape_xaml_literal(node.props[prop])}"')
+        if semantic_attrs:
+            lines[start] = re.sub(r'(<[A-Za-z]+)', lambda m: m[0] + ' ' + ' '.join(semantic_attrs), lines[start], count=1)
         return lines
 
     def _slot_attrs(self, node: UiNode, ctx: EmitContext) -> List[str]:
@@ -230,9 +249,9 @@ class WpfGenerator:
         pascal_name = self._resolve_x_name(node, default_prefix="Button", force=True)
         if pascal_name:
             attrs.append(f'x:Name="{pascal_name}"')
-        attrs.append(f'Content="{escape_xml(node.props.get("text", "Button"))}"')
+        attrs.append(f'Content="{escape_xaml_literal(node.props.get("text", "Button"))}"')
         cmd = node.props.get("command")
-        if cmd:
+        if is_binding_identifier(cmd):
             attrs.append(f'Command="{{Binding {cmd}}}"')
         attrs.extend(self._slot_attrs(node, ctx))
         attrs.extend(self._size_attrs(node, ctx))
@@ -255,12 +274,13 @@ class WpfGenerator:
         
         # TextBox.Text must remain empty unless explicitly set in props["text"]
         if node.props.get("text"):
-            attrs.append(f'Text="{escape_xml(str(node.props["text"]))}"')
+            attrs.append(f'Text="{escape_xaml_literal(str(node.props["text"]))}"')
         
         placeholder = node.props.get("placeholder")
         if placeholder:
-            attrs.append(f'ToolTip="{escape_xml(str(placeholder))}"')
-            attrs.append(f'Tag="{escape_xml(str(placeholder))}"')
+            if "tooltip" not in node.props:
+                attrs.append(f'ToolTip="{escape_xaml_literal(str(placeholder))}"')
+            attrs.append(f'Tag="{escape_xaml_literal(str(placeholder))}"')
 
         attrs.extend(self._slot_attrs(node, ctx))
         attrs.extend(self._size_attrs(node, ctx))
@@ -287,7 +307,7 @@ class WpfGenerator:
         pascal_name = self._resolve_x_name(node, default_prefix="Text", force=False)
         if pascal_name:
             attrs.append(f'x:Name="{pascal_name}"')
-        attrs.append(f'Text="{escape_xml(node.props.get("text", ""))}"')
+        attrs.append(f'Text="{escape_xaml_literal(node.props.get("text", ""))}"')
         attrs.extend(self._slot_attrs(node, ctx))
         attrs.extend(self._size_attrs(node, ctx))
         fg = self.rm.get_color_reference(node.style.foreground)
@@ -304,7 +324,7 @@ class WpfGenerator:
             )
             attrs.append(f'FontWeight="{weight_val}"')
         if node.style.font_family:
-            attrs.append(f'FontFamily="{node.style.font_family}"')
+            attrs.append(f'FontFamily="{escape_xaml_literal(str(node.style.font_family))}"')
         if node.style.opacity is not None and node.style.opacity < 1.0:
             attrs.append(f'Opacity="{node.style.opacity:.2f}"')
         attrs.append('TextWrapping="Wrap"')
@@ -327,6 +347,7 @@ class WpfGenerator:
     def _generate_image(self, node: UiNode, indent_level: int, ctx: EmitContext) -> List[str]:
         indent = "    " * indent_level
         attrs = self._slot_attrs(node, ctx) + self._size_attrs(node, ctx)
+        attrs.append(f'Source="{self._asset_refs[node.props["assetId"]]}"')
         return [f'{indent}<Image Stretch="Uniform" {" ".join(attrs)}/>']
 
     def _generate_unknown(self, node: UiNode, indent_level: int, ctx: EmitContext) -> List[str]:
@@ -352,7 +373,7 @@ class WpfGenerator:
         if ctx.is_root:
             if node.layout.padding:
                 pad = node.layout.padding
-                pad_str = fmt_length(pad) if isinstance(pad, (int, float)) else ",".join(str(p) for p in pad)
+                pad_str = fmt_length(pad) if isinstance(pad, (int, float)) else ",".join(fmt_length(p) for p in pad)
                 lines.append(f'{indent}<Border Padding="{pad_str}">')
                 inner_indent += 1
                 border_opened = True
@@ -373,7 +394,7 @@ class WpfGenerator:
                 border_attrs.append(f'CornerRadius="{fmt_length(node.style.corner_radius)}"')
             if node.layout.padding:
                 pad = node.layout.padding
-                pad_str = fmt_length(pad) if isinstance(pad, (int, float)) else ",".join(str(p) for p in pad)
+                pad_str = fmt_length(pad) if isinstance(pad, (int, float)) else ",".join(fmt_length(p) for p in pad)
                 border_attrs.append(f'Padding="{pad_str}"')
             lines.append(f"{indent}<Border {' '.join(border_attrs)}>")
             inner_indent += 1
@@ -473,3 +494,7 @@ class WpfGenerator:
             lines.extend(self._generate_node(child, indent_level + 1, child_ctx))
         lines.append(f"{indent}</{container_tag}>")
         return lines
+
+
+def _safe_namespace(app_namespace: str) -> str:
+    return app_namespace if is_dotted_identifier(app_namespace) else "GeneratedWpfDemo"

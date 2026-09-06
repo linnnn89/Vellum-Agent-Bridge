@@ -93,7 +93,7 @@ Sizing、Anchoring、Flow 三个维度正交解耦，严禁通过图层名称（
 1. **基底哈希检验**：校验 `baseSpecSha256` 是否与当前 `ui-spec.json` 的 SHA-256 完全吻合，防止并发冲突或脏读；
 2. **全量前置校验**：遍历所有 operation，检查 `nodeId` 是否存在、`path` 是否在白名单、`value` 类型是否合法；
 3. **全通过写入**：只要有一条 operation 不合规，整批 patch 立即回滚并报错退出；
-4. **生成审计文件**：成功应用后生成 `refinement-report.json`，完整记录被修改节点、原始值、新值与修改原因。
+4. **生成审计文件**：成功应用后生成 `refinement-report.json`，记录被修改节点、路径与操作数；报告 v2 将原始值、新值和原因替换为 redacted 标记，不输出正文或可字典猜测的正文哈希。实际 refined spec 仍保留 UI 文案，应按用户内容管理，不作为公开审计产物。
 
 ---
 

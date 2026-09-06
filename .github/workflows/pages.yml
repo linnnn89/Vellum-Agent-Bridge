@@ -2,9 +2,9 @@ name: CI and GitHub Pages
 
 on:
   push:
-    branches: [main]
+    branches: [main, Vellum-Agent-Bridge]
   pull_request:
-    branches: [main]
+    branches: [main, Vellum-Agent-Bridge]
   workflow_dispatch:
 
 permissions:
@@ -71,7 +71,7 @@ jobs:
           if-no-files-found: error
           retention-days: 14
       - name: Upload GitHub Pages artifact
-        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        if: github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
         uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b # v4
         with:
           path: _site
@@ -99,7 +99,7 @@ jobs:
       - name: Set up .NET
         uses: actions/setup-dotnet@3951f0dfe7a07e2313ec93c75700083e200f37a4 # v4
         with:
-          dotnet-version: '8.0.x'
+          dotnet-version: '10.0.x'
       - name: Install Bridge package and run unit & canary tests
         run: |
           cd tools/vellum-wpf-bridge
@@ -118,7 +118,7 @@ jobs:
 
   deploy:
     name: Publish GitHub Pages
-    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    if: github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
     needs: [build, windows-bridge]
     runs-on: ubuntu-24.04
     timeout-minutes: 10

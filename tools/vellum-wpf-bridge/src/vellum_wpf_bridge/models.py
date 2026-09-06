@@ -351,6 +351,7 @@ class UiSpec:
     theme: str = "dark"
     resources: Dict[str, str] = field(default_factory=dict)
     root: Optional[UiNode] = None
+    assets: Dict[str, str] = field(default_factory=dict)
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -362,10 +363,13 @@ class UiSpec:
             "theme": self.theme,
             "resources": self.resources,
             "root": self.root.to_dict() if self.root else None,
+            **({"assets": self.assets} if self.assets else {}),
         }
 
     @classmethod
     def from_dict(cls, d: Dict[str, Any]) -> UiSpec:
+        from .spec_validator import validate_ui_spec_dict
+        validate_ui_spec_dict(d)
         root = UiNode.from_dict(d["root"]) if d.get("root") else None
         return cls(
             version=str(d.get("version", "0.1")),
@@ -376,6 +380,7 @@ class UiSpec:
             theme=str(d.get("theme", "dark")),
             resources=dict(d.get("resources", {})),
             root=root,
+            assets=dict(d.get("assets", {})),
         )
 
 

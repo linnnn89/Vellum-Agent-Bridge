@@ -9,6 +9,7 @@ import subprocess
 import shutil
 import tempfile
 import unittest
+import sys
 import xml.etree.ElementTree as ET
 
 from vellum_wpf_bridge.layout_contract import (
@@ -287,7 +288,7 @@ class TestWpfRuntimeStarMeasure(unittest.TestCase):
 
     def test_wpf_grid_actual_width_delta(self):
         dotnet = shutil.which("dotnet")
-        if not dotnet:
+        if sys.platform != "win32" or not dotnet:
             self.skipTest("dotnet SDK not available")
         project = Path(__file__).parent / "wpf-canary" / "WpfCanary.csproj"
         if not project.exists():
