@@ -6,3 +6,5 @@ node_modules/
 _site/
 test-results/
 /Vellum.html
+**/bin/
+**/obj/

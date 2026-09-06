@@ -1,0 +1,142 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vellum.design/schemas/ui-spec.schema.json",
+  "title": "SemanticUiSpec",
+  "description": "Semantic UI specification bridging Vellum design documents to UI frameworks",
+  "type": "object",
+  "required": ["version", "name", "type", "root"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "enum": ["0.1"]
+    },
+    "name": {
+      "type": "string"
+    },
+    "type": {
+      "type": "string",
+      "enum": ["window", "page", "component"]
+    },
+    "width": {
+      "type": "number"
+    },
+    "height": {
+      "type": "number"
+    },
+    "theme": {
+      "type": "string",
+      "enum": ["light", "dark", "auto"]
+    },
+    "resources": {
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    },
+    "root": {
+      "$ref": "#/$defs/UiNode"
+    }
+  },
+  "$defs": {
+    "UiNode": {
+      "type": "object",
+      "required": ["id", "type"],
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "type": {
+          "type": "string",
+          "enum": [
+            "window",
+            "panel",
+            "frame",
+            "stack",
+            "grid",
+            "text",
+            "button",
+            "input",
+            "image",
+            "separator",
+            "card",
+            "badge",
+            "icon",
+            "unknown"
+          ]
+        },
+        "source": {
+          "type": "object",
+          "properties": {
+            "format": { "type": "string" },
+            "nodeId": { "type": "string" },
+            "nodeName": { "type": "string" },
+            "sourceType": { "type": "string" }
+          }
+        },
+        "layout": {
+          "type": "object",
+          "properties": {
+            "type": { "type": "string", "enum": ["stack", "grid", "dock", "absolute", "none"] },
+            "direction": { "type": "string", "enum": ["horizontal", "vertical"] },
+            "gap": { "type": "number" },
+            "padding": {
+              "oneOf": [
+                { "type": "number" },
+                { "type": "array", "items": { "type": "number" }, "minItems": 4, "maxItems": 4 }
+              ]
+            },
+            "align": { "type": "string", "enum": ["start", "center", "end", "stretch"] },
+            "crossAlign": { "type": "string", "enum": ["start", "center", "end", "stretch"] },
+            "widthMode": { "type": "string", "enum": ["fixed", "fill"] },
+            "heightMode": { "type": "string", "enum": ["fixed", "fill"] },
+            "constraintH": { "type": "string", "enum": ["left", "right", "center", "stretch", "scale"] },
+            "constraintV": { "type": "string", "enum": ["top", "bottom", "center", "stretch", "scale"] },
+            "designWidth": { "type": "number" },
+            "designHeight": { "type": "number" },
+            "x": { "type": "number" },
+            "y": { "type": "number" },
+            "width": { "oneOf": [{ "type": "number" }, { "type": "string" }] },
+            "height": { "oneOf": [{ "type": "number" }, { "type": "string" }] },
+            "grow": { "type": "number" },
+            "columns": { "type": "array", "items": { "oneOf": [{ "type": "number" }, { "type": "string" }] } },
+            "rows": { "type": "array", "items": { "oneOf": [{ "type": "number" }, { "type": "string" }] } },
+            "gridColumn": { "type": "integer" },
+            "gridRow": { "type": "integer" }
+          }
+        },
+        "style": {
+          "type": "object",
+          "properties": {
+            "background": { "type": "string" },
+            "foreground": { "type": "string" },
+            "borderColor": { "type": "string" },
+            "borderThickness": { "type": "number" },
+            "cornerRadius": { "type": "number" },
+            "opacity": { "type": "number" },
+            "fontSize": { "type": "number" },
+            "fontWeight": { "oneOf": [{ "type": "number" }, { "type": "string" }] },
+            "fontFamily": { "type": "string" },
+            "fontStyle": { "type": "string" },
+            "textAlign": { "type": "string", "enum": ["left", "center", "right", "justify"] }
+          }
+        },
+        "props": {
+          "type": "object",
+          "properties": {
+            "text": { "type": "string" },
+            "placeholder": { "type": "string" },
+            "command": { "type": "string" },
+            "icon": { "type": "string" },
+            "assetId": { "type": "string" }
+          },
+          "additionalProperties": true
+        },
+        "children": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/UiNode" }
+        },
+        "warnings": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    }
+  }
+}

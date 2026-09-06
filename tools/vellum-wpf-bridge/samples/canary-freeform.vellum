@@ -1,0 +1,55 @@
+{
+  "format": "vellum",
+  "version": 1,
+  "name": "Canary Freeform",
+  "pageId": "page-free",
+  "tokens": { "colors": [] },
+  "assets": {},
+  "pages": [
+    {
+      "id": "page-free",
+      "name": "Freeform",
+      "nodes": [
+        {
+          "id": "root",
+          "type": "frame",
+          "name": "MainWindow",
+          "parentId": null,
+          "x": 0,
+          "y": 0,
+          "w": 200,
+          "h": 200,
+          "rotation": 0,
+          "opacity": 1,
+          "fill": "#111111"
+        },
+        {
+          "id": "a",
+          "type": "rect",
+          "name": "BoxA",
+          "parentId": "root",
+          "x": 10,
+          "y": 10,
+          "w": 80,
+          "h": 80,
+          "rotation": 0,
+          "opacity": 1,
+          "fill": "#FF0000"
+        },
+        {
+          "id": "b",
+          "type": "rect",
+          "name": "BoxB",
+          "parentId": "root",
+          "x": 40,
+          "y": 40,
+          "w": 80,
+          "h": 80,
+          "rotation": 0,
+          "opacity": 1,
+          "fill": "#00FF00"
+        }
+      ]
+    }
+  ]
+}

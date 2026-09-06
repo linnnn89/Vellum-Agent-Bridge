@@ -1,0 +1,1073 @@
+{
+  "version": "0.1",
+  "name": "TabletopChatExperience",
+  "type": "window",
+  "width": 1280.0,
+  "height": 820.0,
+  "theme": "dark",
+  "resources": {},
+  "root": {
+    "id": "win-root",
+    "type": "window",
+    "name": "MainWindow",
+    "source": {
+      "format": "vellum",
+      "nodeId": "win-root",
+      "nodeName": "MainWindow",
+      "sourceType": "frame"
+    },
+    "layout": {
+      "type": "grid",
+      "direction": "vertical",
+      "gap": 12.0,
+      "padding": 16.0,
+      "widthMode": "fill",
+      "heightMode": "fill",
+      "constraintH": "left",
+      "constraintV": "top",
+      "designWidth": 1280.0,
+      "designHeight": 820.0,
+      "x": 0.0,
+      "y": 0.0,
+      "rows": [
+        50.0,
+        "*",
+        54.0
+      ]
+    },
+    "style": {
+      "background": "#18161E",
+      "cornerRadius": 12.0
+    },
+    "children": [
+      {
+        "id": "app-header",
+        "type": "card",
+        "name": "AppHeader",
+        "source": {
+          "format": "vellum",
+          "nodeId": "app-header",
+          "nodeName": "AppHeader",
+          "sourceType": "frame"
+        },
+        "layout": {
+          "type": "stack",
+          "direction": "horizontal",
+          "gap": 16.0,
+          "padding": 12.0,
+          "widthMode": "fill",
+          "heightMode": "fixed",
+          "constraintH": "stretch",
+          "constraintV": "top",
+          "designWidth": 1248.0,
+          "designHeight": 50.0,
+          "x": 16.0,
+          "y": 16.0,
+          "height": 50.0,
+          "gridRow": 0
+        },
+        "style": {
+          "background": "#23202C",
+          "cornerRadius": 8.0
+        },
+        "children": [
+          {
+            "id": "app-title",
+            "type": "text",
+            "name": "TitleText",
+            "source": {
+              "format": "vellum",
+              "nodeId": "app-title",
+              "nodeName": "TitleText",
+              "sourceType": "text"
+            },
+            "layout": {
+              "widthMode": "fixed",
+              "heightMode": "fixed",
+              "constraintH": "left",
+              "constraintV": "top",
+              "designWidth": 320.0,
+              "designHeight": 22.0,
+              "x": 12.0,
+              "y": 14.0,
+              "width": 320.0,
+              "height": 22.0
+            },
+            "style": {
+              "foreground": "#FAF7FD",
+              "fontSize": 15.0,
+              "fontWeight": 600,
+              "fontFamily": "Segoe UI",
+              "textAlign": "left"
+            },
+            "props": {
+              "text": "⚔ Tabletop Campaign Workspace"
+            }
+          },
+          {
+            "id": "app-subtitle",
+            "type": "text",
+            "name": "SubtitleText",
+            "source": {
+              "format": "vellum",
+              "nodeId": "app-subtitle",
+              "nodeName": "SubtitleText",
+              "sourceType": "text"
+            },
+            "layout": {
+              "widthMode": "fixed",
+              "heightMode": "fixed",
+              "constraintH": "left",
+              "constraintV": "top",
+              "designWidth": 400.0,
+              "designHeight": 20.0,
+              "x": 348.0,
+              "y": 15.0,
+              "width": 400.0,
+              "height": 20.0
+            },
+            "style": {
+              "foreground": "#A49BB3",
+              "fontSize": 12.0,
+              "fontWeight": 400,
+              "fontFamily": "Segoe UI",
+              "textAlign": "left"
+            },
+            "props": {
+              "text": "Session #14: The Whispering Caverns · In Progress"
+            }
+          }
+        ]
+      },
+      {
+        "id": "main-workspace",
+        "type": "panel",
+        "name": "MainWorkspace",
+        "source": {
+          "format": "vellum",
+          "nodeId": "main-workspace",
+          "nodeName": "MainWorkspace",
+          "sourceType": "frame"
+        },
+        "layout": {
+          "type": "grid",
+          "direction": "horizontal",
+          "gap": 12.0,
+          "widthMode": "fill",
+          "heightMode": "fill",
+          "constraintH": "stretch",
+          "constraintV": "stretch",
+          "designWidth": 1248.0,
+          "designHeight": 660.0,
+          "x": 16.0,
+          "y": 78.0,
+          "columns": [
+            260.0,
+            "*",
+            260.0
+          ],
+          "gridRow": 1
+        },
+        "children": [
+          {
+            "id": "char-sidebar",
+            "type": "card",
+            "name": "CharacterSidebar",
+            "source": {
+              "format": "vellum",
+              "nodeId": "char-sidebar",
+              "nodeName": "CharacterSidebar",
+              "sourceType": "frame"
+            },
+            "layout": {
+              "type": "stack",
+              "direction": "vertical",
+              "gap": 10.0,
+              "padding": 16.0,
+              "widthMode": "fixed",
+              "heightMode": "fill",
+              "constraintH": "left",
+              "constraintV": "stretch",
+              "designWidth": 260.0,
+              "designHeight": 660.0,
+              "x": 0.0,
+              "y": 0.0,
+              "width": 260.0,
+              "gridColumn": 0
+            },
+            "style": {
+              "background": "#23202C",
+              "cornerRadius": 10.0
+            },
+            "children": [
+              {
+                "id": "char-heading",
+                "type": "text",
+                "name": "CharactersHeading",
+                "source": {
+                  "format": "vellum",
+                  "nodeId": "char-heading",
+                  "nodeName": "CharactersHeading",
+                  "sourceType": "text"
+                },
+                "layout": {
+                  "widthMode": "fixed",
+                  "heightMode": "fixed",
+                  "constraintH": "left",
+                  "constraintV": "top",
+                  "designWidth": 228.0,
+                  "designHeight": 20.0,
+                  "x": 16.0,
+                  "y": 16.0,
+                  "width": 228.0,
+                  "height": 20.0
+                },
+                "style": {
+                  "foreground": "#A49BB3",
+                  "fontSize": 11.0,
+                  "fontWeight": 600,
+                  "fontFamily": "Segoe UI",
+                  "textAlign": "left"
+                },
+                "props": {
+                  "text": "CHARACTERS (3)"
+                }
+              },
+              {
+                "id": "card-player-a",
+                "type": "card",
+                "name": "PlayerACard",
+                "source": {
+                  "format": "vellum",
+                  "nodeId": "card-player-a",
+                  "nodeName": "PlayerACard",
+                  "sourceType": "frame"
+                },
+                "layout": {
+                  "type": "stack",
+                  "direction": "vertical",
+                  "gap": 4.0,
+                  "padding": 10.0,
+                  "widthMode": "fixed",
+                  "heightMode": "fixed",
+                  "constraintH": "left",
+                  "constraintV": "top",
+                  "designWidth": 228.0,
+                  "designHeight": 64.0,
+                  "x": 16.0,
+                  "y": 46.0,
+                  "width": 228.0,
+                  "height": 64.0
+                },
+                "style": {
+                  "background": "#2E2A3A",
+                  "cornerRadius": 8.0
+                },
+                "children": [
+                  {
+                    "id": "text-player-a-name",
+                    "type": "text",
+                    "name": "PlayerAName",
+                    "source": {
+                      "format": "vellum",
+                      "nodeId": "text-player-a-name",
+                      "nodeName": "PlayerAName",
+                      "sourceType": "text"
+                    },
+                    "layout": {
+                      "widthMode": "fixed",
+                      "heightMode": "fixed",
+                      "constraintH": "left",
+                      "constraintV": "top",
+                      "designWidth": 208.0,
+                      "designHeight": 20.0,
+                      "x": 10.0,
+                      "y": 10.0,
+                      "width": 208.0,
+                      "height": 20.0
+                    },
+                    "style": {
+                      "foreground": "#FAF7FD",
+                      "fontSize": 13.0,
+                      "fontWeight": 600,
+                      "fontFamily": "Segoe UI",
+                      "textAlign": "left"
+                    },
+                    "props": {
+                      "text": "Player A - Valerius (Paladin)"
+                    }
+                  },
+                  {
+                    "id": "text-player-a-stat",
+                    "type": "text",
+                    "name": "PlayerAStats",
+                    "source": {
+                      "format": "vellum",
+                      "nodeId": "text-player-a-stat",
+                      "nodeName": "PlayerAStats",
+                      "sourceType": "text"
+                    },
+                    "layout": {
+                      "widthMode": "fixed",
+                      "heightMode": "fixed",
+                      "constraintH": "left",
+                      "constraintV": "top",
+                      "designWidth": 208.0,
+                      "designHeight": 18.0,
+                      "x": 10.0,
+                      "y": 34.0,
+                      "width": 208.0,
+                      "height": 18.0
+                    },
+                    "style": {
+                      "foreground": "#A49BB3",
+                      "fontSize": 11.0,
+                      "fontWeight": 400,
+                      "fontFamily": "Segoe UI",
+                      "textAlign": "left"
+                    },
+                    "props": {
+                      "text": "HP: 42/42 · AC: 18 · Active"
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "card-player-b",
+                "type": "card",
+                "name": "PlayerBCard",
+                "source": {
+                  "format": "vellum",
+                  "nodeId": "card-player-b",
+                  "nodeName": "PlayerBCard",
+                  "sourceType": "frame"
+                },
+                "layout": {
+                  "type": "stack",
+                  "direction": "vertical",
+                  "gap": 4.0,
+                  "padding": 10.0,
+                  "widthMode": "fixed",
+                  "heightMode": "fixed",
+                  "constraintH": "left",
+                  "constraintV": "top",
+                  "designWidth": 228.0,
+                  "designHeight": 64.0,
+                  "x": 16.0,
+                  "y": 120.0,
+                  "width": 228.0,
+                  "height": 64.0
+                },
+                "style": {
+                  "background": "#2E2A3A",
+                  "cornerRadius": 8.0
+                },
+                "children": [
+                  {
+                    "id": "text-player-b-name",
+                    "type": "text",
+                    "name": "PlayerBName",
+                    "source": {
+                      "format": "vellum",
+                      "nodeId": "text-player-b-name",
+                      "nodeName": "PlayerBName",
+                      "sourceType": "text"
+                    },
+                    "layout": {
+                      "widthMode": "fixed",
+                      "heightMode": "fixed",
+                      "constraintH": "left",
+                      "constraintV": "top",
+                      "designWidth": 208.0,
+                      "designHeight": 20.0,
+                      "x": 10.0,
+                      "y": 10.0,
+                      "width": 208.0,
+                      "height": 20.0
+                    },
+                    "style": {
+                      "foreground": "#FAF7FD",
+                      "fontSize": 13.0,
+                      "fontWeight": 600,
+                      "fontFamily": "Segoe UI",
+                      "textAlign": "left"
+                    },
+                    "props": {
+                      "text": "Player B - Lyra (Rogue)"
+                    }
+                  },
+                  {
+                    "id": "text-player-b-stat",
+                    "type": "text",
+                    "name": "PlayerBStats",
+                    "source": {
+                      "format": "vellum",
+                      "nodeId": "text-player-b-stat",
+                      "nodeName": "PlayerBStats",
+                      "sourceType": "text"
+                    },
+                    "layout": {
+                      "widthMode": "fixed",
+                      "heightMode": "fixed",
+                      "constraintH": "left",
+                      "constraintV": "top",
+                      "designWidth": 208.0,
+                      "designHeight": 18.0,
+                      "x": 10.0,
+                      "y": 34.0,
+                      "width": 208.0,
+                      "height": 18.0
+                    },
+                    "style": {
+                      "foreground": "#A49BB3",
+                      "fontSize": 11.0,
+                      "fontWeight": 400,
+                      "fontFamily": "Segoe UI",
+                      "textAlign": "left"
+                    },
+                    "props": {
+                      "text": "HP: 28/28 · Stealth · Ready"
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "card-player-c",
+                "type": "card",
+                "name": "PlayerCCard",
+                "source": {
+                  "format": "vellum",
+                  "nodeId": "card-player-c",
+                  "nodeName": "PlayerCCard",
+                  "sourceType": "frame"
+                },
+                "layout": {
+                  "type": "stack",
+                  "direction": "vertical",
+                  "gap": 4.0,
+                  "padding": 10.0,
+                  "widthMode": "fixed",
+                  "heightMode": "fixed",
+                  "constraintH": "left",
+                  "constraintV": "top",
+                  "designWidth": 228.0,
+                  "designHeight": 64.0,
+                  "x": 16.0,
+                  "y": 194.0,
+                  "width": 228.0,
+                  "height": 64.0
+                },
+                "style": {
+                  "background": "#2E2A3A",
+                  "cornerRadius": 8.0
+                },
+                "children": [
+                  {
+                    "id": "text-player-c-name",
+                    "type": "text",
+                    "name": "PlayerCName",
+                    "source": {
+                      "format": "vellum",
+                      "nodeId": "text-player-c-name",
+                      "nodeName": "PlayerCName",
+                      "sourceType": "text"
+                    },
+                    "layout": {
+                      "widthMode": "fixed",
+                      "heightMode": "fixed",
+                      "constraintH": "left",
+                      "constraintV": "top",
+                      "designWidth": 208.0,
+                      "designHeight": 20.0,
+                      "x": 10.0,
+                      "y": 10.0,
+                      "width": 208.0,
+                      "height": 20.0
+                    },
+                    "style": {
+                      "foreground": "#FAF7FD",
+                      "fontSize": 13.0,
+                      "fontWeight": 600,
+                      "fontFamily": "Segoe UI",
+                      "textAlign": "left"
+                    },
+                    "props": {
+                      "text": "Player C - Zephyr (Mage)"
+                    }
+                  },
+                  {
+                    "id": "text-player-c-stat",
+                    "type": "text",
+                    "name": "PlayerCStats",
+                    "source": {
+                      "format": "vellum",
+                      "nodeId": "text-player-c-stat",
+                      "nodeName": "PlayerCStats",
+                      "sourceType": "text"
+                    },
+                    "layout": {
+                      "widthMode": "fixed",
+                      "heightMode": "fixed",
+                      "constraintH": "left",
+                      "constraintV": "top",
+                      "designWidth": 208.0,
+                      "designHeight": 18.0,
+                      "x": 10.0,
+                      "y": 34.0,
+                      "width": 208.0,
+                      "height": 18.0
+                    },
+                    "style": {
+                      "foreground": "#A49BB3",
+                      "fontSize": 11.0,
+                      "fontWeight": 400,
+                      "fontFamily": "Segoe UI",
+                      "textAlign": "left"
+                    },
+                    "props": {
+                      "text": "HP: 22/22 · Spell slots: 4"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "chat-area",
+            "type": "card",
+            "name": "ChatArea",
+            "source": {
+              "format": "vellum",
+              "nodeId": "chat-area",
+              "nodeName": "ChatArea",
+              "sourceType": "frame"
+            },
+            "layout": {
+              "type": "stack",
+              "direction": "vertical",
+              "gap": 12.0,
+              "padding": 16.0,
+              "widthMode": "fill",
+              "heightMode": "fill",
+              "constraintH": "stretch",
+              "constraintV": "stretch",
+              "designWidth": 704.0,
+              "designHeight": 660.0,
+              "x": 272.0,
+              "y": 0.0,
+              "gridColumn": 1
+            },
+            "style": {
+              "background": "#1E1B26",
+              "cornerRadius": 10.0
+            },
+            "children": [
+              {
+                "id": "chat-heading",
+                "type": "text",
+                "name": "ChatHeading",
+                "source": {
+                  "format": "vellum",
+                  "nodeId": "chat-heading",
+                  "nodeName": "ChatHeading",
+                  "sourceType": "text"
+                },
+                "layout": {
+                  "widthMode": "fixed",
+                  "heightMode": "fixed",
+                  "constraintH": "left",
+                  "constraintV": "top",
+                  "designWidth": 672.0,
+                  "designHeight": 24.0,
+                  "x": 16.0,
+                  "y": 16.0,
+                  "width": 672.0,
+                  "height": 24.0
+                },
+                "style": {
+                  "foreground": "#FAF7FD",
+                  "fontSize": 15.0,
+                  "fontWeight": 600,
+                  "fontFamily": "Segoe UI",
+                  "textAlign": "left"
+                },
+                "props": {
+                  "text": "Chat Area & Narration Log"
+                }
+              },
+              {
+                "id": "msg-gm",
+                "type": "card",
+                "name": "GmMessageCard",
+                "source": {
+                  "format": "vellum",
+                  "nodeId": "msg-gm",
+                  "nodeName": "GmMessageCard",
+                  "sourceType": "frame"
+                },
+                "layout": {
+                  "type": "stack",
+                  "direction": "vertical",
+                  "gap": 6.0,
+                  "padding": 12.0,
+                  "widthMode": "fixed",
+                  "heightMode": "fixed",
+                  "constraintH": "left",
+                  "constraintV": "top",
+                  "designWidth": 672.0,
+                  "designHeight": 80.0,
+                  "x": 16.0,
+                  "y": 52.0,
+                  "width": 672.0,
+                  "height": 80.0
+                },
+                "style": {
+                  "background": "#2E2A3A",
+                  "cornerRadius": 8.0
+                },
+                "children": [
+                  {
+                    "id": "msg-gm-author",
+                    "type": "text",
+                    "name": "GmAuthor",
+                    "source": {
+                      "format": "vellum",
+                      "nodeId": "msg-gm-author",
+                      "nodeName": "GmAuthor",
+                      "sourceType": "text"
+                    },
+                    "layout": {
+                      "widthMode": "fixed",
+                      "heightMode": "fixed",
+                      "constraintH": "left",
+                      "constraintV": "top",
+                      "designWidth": 648.0,
+                      "designHeight": 18.0,
+                      "x": 12.0,
+                      "y": 12.0,
+                      "width": 648.0,
+                      "height": 18.0
+                    },
+                    "style": {
+                      "foreground": "#8462E8",
+                      "fontSize": 11.0,
+                      "fontWeight": 600,
+                      "fontFamily": "Segoe UI",
+                      "textAlign": "left"
+                    },
+                    "props": {
+                      "text": "Game Master · 14:02"
+                    }
+                  },
+                  {
+                    "id": "msg-gm-content",
+                    "type": "text",
+                    "name": "GmContent",
+                    "source": {
+                      "format": "vellum",
+                      "nodeId": "msg-gm-content",
+                      "nodeName": "GmContent",
+                      "sourceType": "text"
+                    },
+                    "layout": {
+                      "widthMode": "fixed",
+                      "heightMode": "fixed",
+                      "constraintH": "left",
+                      "constraintV": "top",
+                      "designWidth": 648.0,
+                      "designHeight": 36.0,
+                      "x": 12.0,
+                      "y": 36.0,
+                      "width": 648.0,
+                      "height": 36.0
+                    },
+                    "style": {
+                      "foreground": "#FAF7FD",
+                      "fontSize": 13.0,
+                      "fontWeight": 400,
+                      "fontFamily": "Segoe UI",
+                      "textAlign": "left"
+                    },
+                    "props": {
+                      "text": "The ancient iron doors screech as they yield. Ahead, damp stalactites glow with faint bioluminescent moss. Roll Perception."
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "msg-p1",
+                "type": "card",
+                "name": "PlayerMessageCard",
+                "source": {
+                  "format": "vellum",
+                  "nodeId": "msg-p1",
+                  "nodeName": "PlayerMessageCard",
+                  "sourceType": "frame"
+                },
+                "layout": {
+                  "type": "stack",
+                  "direction": "vertical",
+                  "gap": 6.0,
+                  "padding": 12.0,
+                  "widthMode": "fixed",
+                  "heightMode": "fixed",
+                  "constraintH": "left",
+                  "constraintV": "top",
+                  "designWidth": 672.0,
+                  "designHeight": 72.0,
+                  "x": 16.0,
+                  "y": 144.0,
+                  "width": 672.0,
+                  "height": 72.0
+                },
+                "style": {
+                  "background": "#2E2A3A",
+                  "cornerRadius": 8.0
+                },
+                "children": [
+                  {
+                    "id": "msg-p1-author",
+                    "type": "text",
+                    "name": "Player1Author",
+                    "source": {
+                      "format": "vellum",
+                      "nodeId": "msg-p1-author",
+                      "nodeName": "Player1Author",
+                      "sourceType": "text"
+                    },
+                    "layout": {
+                      "widthMode": "fixed",
+                      "heightMode": "fixed",
+                      "constraintH": "left",
+                      "constraintV": "top",
+                      "designWidth": 648.0,
+                      "designHeight": 18.0,
+                      "x": 12.0,
+                      "y": 12.0,
+                      "width": 648.0,
+                      "height": 18.0
+                    },
+                    "style": {
+                      "foreground": "#57C785",
+                      "fontSize": 11.0,
+                      "fontWeight": 600,
+                      "fontFamily": "Segoe UI",
+                      "textAlign": "left"
+                    },
+                    "props": {
+                      "text": "Player A (Valerius) · 14:03"
+                    }
+                  },
+                  {
+                    "id": "msg-p1-content",
+                    "type": "text",
+                    "name": "Player1Content",
+                    "source": {
+                      "format": "vellum",
+                      "nodeId": "msg-p1-content",
+                      "nodeName": "Player1Content",
+                      "sourceType": "text"
+                    },
+                    "layout": {
+                      "widthMode": "fixed",
+                      "heightMode": "fixed",
+                      "constraintH": "left",
+                      "constraintV": "top",
+                      "designWidth": 648.0,
+                      "designHeight": 24.0,
+                      "x": 12.0,
+                      "y": 36.0,
+                      "width": 648.0,
+                      "height": 24.0
+                    },
+                    "style": {
+                      "foreground": "#FAF7FD",
+                      "fontSize": 13.0,
+                      "fontWeight": 400,
+                      "fontFamily": "Segoe UI",
+                      "textAlign": "left"
+                    },
+                    "props": {
+                      "text": "Rolled 18 (1d20+3). I hold my torch aloft and check the floor for pressure plates."
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "inspector-sidebar",
+            "type": "card",
+            "name": "InspectorSidebar",
+            "source": {
+              "format": "vellum",
+              "nodeId": "inspector-sidebar",
+              "nodeName": "InspectorSidebar",
+              "sourceType": "frame"
+            },
+            "layout": {
+              "type": "stack",
+              "direction": "vertical",
+              "gap": 12.0,
+              "padding": 16.0,
+              "widthMode": "fixed",
+              "heightMode": "fill",
+              "constraintH": "left",
+              "constraintV": "stretch",
+              "designWidth": 260.0,
+              "designHeight": 660.0,
+              "x": 988.0,
+              "y": 0.0,
+              "width": 260.0,
+              "gridColumn": 2
+            },
+            "style": {
+              "background": "#23202C",
+              "cornerRadius": 10.0
+            },
+            "children": [
+              {
+                "id": "inspector-title",
+                "type": "text",
+                "name": "InspectorTitle",
+                "source": {
+                  "format": "vellum",
+                  "nodeId": "inspector-title",
+                  "nodeName": "InspectorTitle",
+                  "sourceType": "text"
+                },
+                "layout": {
+                  "widthMode": "fixed",
+                  "heightMode": "fixed",
+                  "constraintH": "left",
+                  "constraintV": "top",
+                  "designWidth": 228.0,
+                  "designHeight": 20.0,
+                  "x": 16.0,
+                  "y": 16.0,
+                  "width": 228.0,
+                  "height": 20.0
+                },
+                "style": {
+                  "foreground": "#A49BB3",
+                  "fontSize": 11.0,
+                  "fontWeight": 600,
+                  "fontFamily": "Segoe UI",
+                  "textAlign": "left"
+                },
+                "props": {
+                  "text": "INSPECTOR"
+                }
+              },
+              {
+                "id": "card-model-settings",
+                "type": "card",
+                "name": "ModelCard",
+                "source": {
+                  "format": "vellum",
+                  "nodeId": "card-model-settings",
+                  "nodeName": "ModelCard",
+                  "sourceType": "frame"
+                },
+                "layout": {
+                  "type": "stack",
+                  "direction": "vertical",
+                  "gap": 6.0,
+                  "padding": 10.0,
+                  "widthMode": "fixed",
+                  "heightMode": "fixed",
+                  "constraintH": "left",
+                  "constraintV": "top",
+                  "designWidth": 228.0,
+                  "designHeight": 80.0,
+                  "x": 16.0,
+                  "y": 48.0,
+                  "width": 228.0,
+                  "height": 80.0
+                },
+                "style": {
+                  "background": "#2E2A3A",
+                  "cornerRadius": 8.0
+                },
+                "children": [
+                  {
+                    "id": "text-model-label",
+                    "type": "text",
+                    "name": "ModelLabel",
+                    "source": {
+                      "format": "vellum",
+                      "nodeId": "text-model-label",
+                      "nodeName": "ModelLabel",
+                      "sourceType": "text"
+                    },
+                    "layout": {
+                      "widthMode": "fixed",
+                      "heightMode": "fixed",
+                      "constraintH": "left",
+                      "constraintV": "top",
+                      "designWidth": 208.0,
+                      "designHeight": 20.0,
+                      "x": 10.0,
+                      "y": 10.0,
+                      "width": 208.0,
+                      "height": 20.0
+                    },
+                    "style": {
+                      "foreground": "#FAF7FD",
+                      "fontSize": 13.0,
+                      "fontWeight": 600,
+                      "fontFamily": "Segoe UI",
+                      "textAlign": "left"
+                    },
+                    "props": {
+                      "text": "Narrative Engine"
+                    }
+                  },
+                  {
+                    "id": "text-model-desc",
+                    "type": "text",
+                    "name": "ModelDesc",
+                    "source": {
+                      "format": "vellum",
+                      "nodeId": "text-model-desc",
+                      "nodeName": "ModelDesc",
+                      "sourceType": "text"
+                    },
+                    "layout": {
+                      "widthMode": "fixed",
+                      "heightMode": "fixed",
+                      "constraintH": "left",
+                      "constraintV": "top",
+                      "designWidth": 208.0,
+                      "designHeight": 36.0,
+                      "x": 10.0,
+                      "y": 36.0,
+                      "width": 208.0,
+                      "height": 36.0
+                    },
+                    "style": {
+                      "foreground": "#A49BB3",
+                      "fontSize": 11.0,
+                      "fontWeight": 400,
+                      "fontFamily": "Segoe UI",
+                      "textAlign": "left"
+                    },
+                    "props": {
+                      "text": "Gemini 3.8 Pro (Tabletop Preset)\nTemperature: 0.7 · D&D 5e Ruleset"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "action-bar",
+        "type": "card",
+        "name": "ActionBar",
+        "source": {
+          "format": "vellum",
+          "nodeId": "action-bar",
+          "nodeName": "ActionBar",
+          "sourceType": "frame"
+        },
+        "layout": {
+          "type": "grid",
+          "direction": "horizontal",
+          "gap": 12.0,
+          "padding": 8.0,
+          "widthMode": "fill",
+          "heightMode": "fixed",
+          "constraintH": "stretch",
+          "constraintV": "top",
+          "designWidth": 1248.0,
+          "designHeight": 54.0,
+          "x": 16.0,
+          "y": 750.0,
+          "height": 54.0,
+          "columns": [
+            "*",
+            100.0
+          ],
+          "gridRow": 2
+        },
+        "style": {
+          "background": "#23202C",
+          "cornerRadius": 8.0
+        },
+        "children": [
+          {
+            "id": "input-message",
+            "type": "input",
+            "name": "MessageInput",
+            "source": {
+              "format": "vellum",
+              "nodeId": "input-message",
+              "nodeName": "MessageInput",
+              "sourceType": "frame"
+            },
+            "layout": {
+              "widthMode": "fill",
+              "heightMode": "fixed",
+              "constraintH": "stretch",
+              "constraintV": "top",
+              "designWidth": 1120.0,
+              "designHeight": 38.0,
+              "x": 8.0,
+              "y": 8.0,
+              "height": 38.0,
+              "gridColumn": 0
+            },
+            "style": {
+              "background": "#18161E",
+              "foreground": "#D0D0D0",
+              "borderColor": "#3B3549",
+              "borderThickness": 1.0,
+              "cornerRadius": 6.0,
+              "fontSize": 12.0
+            },
+            "props": {
+              "placeholder": "Describe your action or type a command (/roll 1d20+5)..."
+            }
+          },
+          {
+            "id": "btn-send",
+            "type": "button",
+            "name": "SendButton",
+            "source": {
+              "format": "vellum",
+              "nodeId": "btn-send",
+              "nodeName": "SendButton",
+              "sourceType": "frame"
+            },
+            "layout": {
+              "widthMode": "fixed",
+              "heightMode": "fixed",
+              "constraintH": "left",
+              "constraintV": "top",
+              "designWidth": 100.0,
+              "designHeight": 38.0,
+              "x": 1140.0,
+              "y": 8.0,
+              "width": 100.0,
+              "height": 38.0,
+              "gridColumn": 1
+            },
+            "style": {
+              "background": "#8462E8",
+              "foreground": "#FAF7FD",
+              "cornerRadius": 6.0,
+              "fontSize": 13.0,
+              "fontWeight": 600
+            },
+            "props": {
+              "text": "Send",
+              "command": "SendCommand"
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

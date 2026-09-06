@@ -1,0 +1,72 @@
+{
+  "format": "vellum",
+  "version": 1,
+  "name": "Canary Three Column",
+  "pageId": "page-canary",
+  "tokens": { "colors": [] },
+  "assets": {},
+  "pages": [
+    {
+      "id": "page-canary",
+      "name": "Canary",
+      "nodes": [
+        {
+          "id": "root",
+          "type": "frame",
+          "name": "MainWindow",
+          "parentId": null,
+          "x": 0,
+          "y": 0,
+          "w": 1280,
+          "h": 400,
+          "rotation": 0,
+          "opacity": 1,
+          "fill": "#111111",
+          "layout": "horizontal",
+          "gap": 0,
+          "padding": 0
+        },
+        {
+          "id": "left",
+          "type": "frame",
+          "name": "LeftPane",
+          "parentId": "root",
+          "x": 0,
+          "y": 0,
+          "w": 260,
+          "h": 400,
+          "rotation": 0,
+          "opacity": 1,
+          "fill": "#222222"
+        },
+        {
+          "id": "mid",
+          "type": "frame",
+          "name": "CenterPane",
+          "parentId": "root",
+          "x": 260,
+          "y": 0,
+          "w": 760,
+          "h": 400,
+          "rotation": 0,
+          "opacity": 1,
+          "fill": "#333333",
+          "constraintH": "stretch"
+        },
+        {
+          "id": "right",
+          "type": "frame",
+          "name": "RightPane",
+          "parentId": "root",
+          "x": 1020,
+          "y": 0,
+          "w": 260,
+          "h": 400,
+          "rotation": 0,
+          "opacity": 1,
+          "fill": "#222222"
+        }
+      ]
+    }
+  ]
+}

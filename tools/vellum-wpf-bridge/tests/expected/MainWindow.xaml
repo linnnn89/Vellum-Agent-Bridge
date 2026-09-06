@@ -1,0 +1,131 @@
+<Window x:Class="GeneratedWpfDemo.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        Title="TabletopChatExperience"
+        Width="1280"
+        Height="820"
+        WindowStartupLocation="CenterScreen"
+        Background="{StaticResource Brush.Neutral.Darkbg}">
+    <!-- Vellum: win-root / MainWindow -->
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="50"/>
+            <RowDefinition Height="12"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="12"/>
+            <RowDefinition Height="54"/>
+        </Grid.RowDefinitions>
+        <!-- Vellum: app-header / AppHeader -->
+        <Border Grid.Row="0" HorizontalAlignment="Stretch" Height="50" Background="{StaticResource Brush.Neutral.Surface}" CornerRadius="8" Padding="12">
+            <StackPanel Orientation="Horizontal">
+                <!-- Vellum: app-title / TitleText -->
+                <TextBlock x:Name="TitleText" Text="⚔ Tabletop Campaign Workspace" Margin="0,0,16,0" Width="320" Height="22" Foreground="{StaticResource Brush.Text.Primary}" FontSize="15" FontWeight="SemiBold" FontFamily="Segoe UI" TextWrapping="Wrap"/>
+                <!-- Vellum: app-subtitle / SubtitleText -->
+                <TextBlock x:Name="SubtitleText" Text="Session #14: The Whispering Caverns · In Progress" Width="400" Height="20" Foreground="{StaticResource Brush.Text.Secondary}" FontSize="12" FontWeight="Normal" FontFamily="Segoe UI" TextWrapping="Wrap"/>
+            </StackPanel>
+        </Border>
+        <!-- Vellum: main-workspace / MainWorkspace -->
+        <Grid x:Name="MainWorkspace" Grid.Row="2" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="260"/>
+                <ColumnDefinition Width="12"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="12"/>
+                <ColumnDefinition Width="260"/>
+            </Grid.ColumnDefinitions>
+            <!-- Vellum: char-sidebar / CharacterSidebar -->
+            <Border Grid.Column="0" Width="260" VerticalAlignment="Stretch" Background="{StaticResource Brush.Neutral.Surface}" CornerRadius="10" Padding="16">
+                <StackPanel Orientation="Vertical">
+                    <!-- Vellum: char-heading / CharactersHeading -->
+                    <TextBlock x:Name="CharactersHeading" Text="CHARACTERS (3)" Margin="0,0,0,10" Width="228" Height="20" Foreground="{StaticResource Brush.Text.Secondary}" FontSize="11" FontWeight="SemiBold" FontFamily="Segoe UI" TextWrapping="Wrap"/>
+                    <!-- Vellum: card-player-a / PlayerACard -->
+                    <Border Margin="0,0,0,10" Width="228" Height="64" Background="{StaticResource Brush.Neutral.Cardbg}" CornerRadius="8" Padding="10">
+                        <StackPanel Orientation="Vertical">
+                            <!-- Vellum: text-player-a-name / PlayerAName -->
+                            <TextBlock x:Name="PlayerAName" Text="Player A - Valerius (Paladin)" Margin="0,0,0,4" Width="208" Height="20" Foreground="{StaticResource Brush.Text.Primary}" FontSize="13" FontWeight="SemiBold" FontFamily="Segoe UI" TextWrapping="Wrap"/>
+                            <!-- Vellum: text-player-a-stat / PlayerAStats -->
+                            <TextBlock x:Name="PlayerAStats" Text="HP: 42/42 · AC: 18 · Active" Width="208" Height="18" Foreground="{StaticResource Brush.Text.Secondary}" FontSize="11" FontWeight="Normal" FontFamily="Segoe UI" TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </Border>
+                    <!-- Vellum: card-player-b / PlayerBCard -->
+                    <Border Margin="0,0,0,10" Width="228" Height="64" Background="{StaticResource Brush.Neutral.Cardbg}" CornerRadius="8" Padding="10">
+                        <StackPanel Orientation="Vertical">
+                            <!-- Vellum: text-player-b-name / PlayerBName -->
+                            <TextBlock x:Name="PlayerBName" Text="Player B - Lyra (Rogue)" Margin="0,0,0,4" Width="208" Height="20" Foreground="{StaticResource Brush.Text.Primary}" FontSize="13" FontWeight="SemiBold" FontFamily="Segoe UI" TextWrapping="Wrap"/>
+                            <!-- Vellum: text-player-b-stat / PlayerBStats -->
+                            <TextBlock x:Name="PlayerBStats" Text="HP: 28/28 · Stealth · Ready" Width="208" Height="18" Foreground="{StaticResource Brush.Text.Secondary}" FontSize="11" FontWeight="Normal" FontFamily="Segoe UI" TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </Border>
+                    <!-- Vellum: card-player-c / PlayerCCard -->
+                    <Border Width="228" Height="64" Background="{StaticResource Brush.Neutral.Cardbg}" CornerRadius="8" Padding="10">
+                        <StackPanel Orientation="Vertical">
+                            <!-- Vellum: text-player-c-name / PlayerCName -->
+                            <TextBlock x:Name="PlayerCName" Text="Player C - Zephyr (Mage)" Margin="0,0,0,4" Width="208" Height="20" Foreground="{StaticResource Brush.Text.Primary}" FontSize="13" FontWeight="SemiBold" FontFamily="Segoe UI" TextWrapping="Wrap"/>
+                            <!-- Vellum: text-player-c-stat / PlayerCStats -->
+                            <TextBlock x:Name="PlayerCStats" Text="HP: 22/22 · Spell slots: 4" Width="208" Height="18" Foreground="{StaticResource Brush.Text.Secondary}" FontSize="11" FontWeight="Normal" FontFamily="Segoe UI" TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </Border>
+            <!-- Vellum: chat-area / ChatArea -->
+            <Border Grid.Column="2" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Background="#1E1B26" CornerRadius="10" Padding="16">
+                <StackPanel Orientation="Vertical">
+                    <!-- Vellum: chat-heading / ChatHeading -->
+                    <TextBlock x:Name="ChatHeading" Text="Chat Area &amp; Narration Log" Margin="0,0,0,12" Width="672" Height="24" Foreground="{StaticResource Brush.Text.Primary}" FontSize="15" FontWeight="SemiBold" FontFamily="Segoe UI" TextWrapping="Wrap"/>
+                    <!-- Vellum: msg-gm / GmMessageCard -->
+                    <Border Margin="0,0,0,12" Width="672" Height="80" Background="{StaticResource Brush.Neutral.Cardbg}" CornerRadius="8" Padding="12">
+                        <StackPanel Orientation="Vertical">
+                            <!-- Vellum: msg-gm-author / GmAuthor -->
+                            <TextBlock x:Name="GmAuthor" Text="Game Master · 14:02" Margin="0,0,0,6" Width="648" Height="18" Foreground="{StaticResource Brush.Brand.Purple}" FontSize="11" FontWeight="SemiBold" FontFamily="Segoe UI" TextWrapping="Wrap"/>
+                            <!-- Vellum: msg-gm-content / GmContent -->
+                            <TextBlock x:Name="GmContent" Text="The ancient iron doors screech as they yield. Ahead, damp stalactites glow with faint bioluminescent moss. Roll Perception." Width="648" Height="36" Foreground="{StaticResource Brush.Text.Primary}" FontSize="13" FontWeight="Normal" FontFamily="Segoe UI" TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </Border>
+                    <!-- Vellum: msg-p1 / PlayerMessageCard -->
+                    <Border Width="672" Height="72" Background="{StaticResource Brush.Neutral.Cardbg}" CornerRadius="8" Padding="12">
+                        <StackPanel Orientation="Vertical">
+                            <!-- Vellum: msg-p1-author / Player1Author -->
+                            <TextBlock x:Name="Player1Author" Text="Player A (Valerius) · 14:03" Margin="0,0,0,6" Width="648" Height="18" Foreground="#57C785" FontSize="11" FontWeight="SemiBold" FontFamily="Segoe UI" TextWrapping="Wrap"/>
+                            <!-- Vellum: msg-p1-content / Player1Content -->
+                            <TextBlock x:Name="Player1Content" Text="Rolled 18 (1d20+3). I hold my torch aloft and check the floor for pressure plates." Width="648" Height="24" Foreground="{StaticResource Brush.Text.Primary}" FontSize="13" FontWeight="Normal" FontFamily="Segoe UI" TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </Border>
+            <!-- Vellum: inspector-sidebar / InspectorSidebar -->
+            <Border Grid.Column="4" Width="260" VerticalAlignment="Stretch" Background="{StaticResource Brush.Neutral.Surface}" CornerRadius="10" Padding="16">
+                <StackPanel Orientation="Vertical">
+                    <!-- Vellum: inspector-title / InspectorTitle -->
+                    <TextBlock x:Name="InspectorTitle" Text="INSPECTOR" Margin="0,0,0,12" Width="228" Height="20" Foreground="{StaticResource Brush.Text.Secondary}" FontSize="11" FontWeight="SemiBold" FontFamily="Segoe UI" TextWrapping="Wrap"/>
+                    <!-- Vellum: card-model-settings / ModelCard -->
+                    <Border Width="228" Height="80" Background="{StaticResource Brush.Neutral.Cardbg}" CornerRadius="8" Padding="10">
+                        <StackPanel Orientation="Vertical">
+                            <!-- Vellum: text-model-label / ModelLabel -->
+                            <TextBlock x:Name="ModelLabel" Text="Narrative Engine" Margin="0,0,0,6" Width="208" Height="20" Foreground="{StaticResource Brush.Text.Primary}" FontSize="13" FontWeight="SemiBold" FontFamily="Segoe UI" TextWrapping="Wrap"/>
+                            <!-- Vellum: text-model-desc / ModelDesc -->
+                            <TextBlock x:Name="ModelDesc" Text="Gemini 3.8 Pro (Tabletop Preset)
+Temperature: 0.7 · D&amp;D 5e Ruleset" Width="208" Height="36" Foreground="{StaticResource Brush.Text.Secondary}" FontSize="11" FontWeight="Normal" FontFamily="Segoe UI" TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </Border>
+        </Grid>
+        <!-- Vellum: action-bar / ActionBar -->
+        <Border Grid.Row="4" HorizontalAlignment="Stretch" Height="54" Background="{StaticResource Brush.Neutral.Surface}" CornerRadius="8" Padding="8">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="12"/>
+                    <ColumnDefinition Width="100"/>
+                </Grid.ColumnDefinitions>
+                <!-- Vellum: input-message / MessageInput -->
+                <TextBox x:Name="MessageInput" Text="Describe your action or type a command (/roll 1d20+5)..." Grid.Column="0" HorizontalAlignment="Stretch" Height="38" Background="{StaticResource Brush.Neutral.Darkbg}" Foreground="#D0D0D0" BorderBrush="#3B3549" BorderThickness="1" FontSize="12" VerticalContentAlignment="Center" Padding="8,4"/>
+                <!-- Vellum: btn-send / SendButton -->
+                <Button x:Name="SendButton" Content="Send" Command="{Binding SendCommand}" Grid.Column="2" Width="100" Height="38" Background="{StaticResource Brush.Brand.Purple}" Foreground="{StaticResource Brush.Text.Primary}" FontSize="13"/>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>
