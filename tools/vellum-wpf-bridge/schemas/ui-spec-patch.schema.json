@@ -34,6 +34,7 @@
               "name",
               "props.text",
               "props.command",
+              "props.placeholder",
               "props.tooltip",
               "props.accessibleName",
               "props.helpText",

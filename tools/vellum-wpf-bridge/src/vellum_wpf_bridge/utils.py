@@ -2,7 +2,7 @@
 
 import re
 import math
-from typing import Any, Optional, Tuple
+from typing import Any, Optional, Set, Tuple
 
 _IDENT_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 _HEX_BODY_RE = re.compile(r"^[0-9A-Fa-f]+$")
@@ -57,6 +57,40 @@ def to_pascal_case(name: Optional[str]) -> Optional[str]:
         pascal = "Element" + pascal
 
     return pascal if pascal else None
+
+
+def make_generated_name(
+    node_id: Optional[str],
+    used: Set[str],
+    *,
+    node_type: str = "Element",
+) -> str:
+    """Deterministic XAML identifier from a stable node id, never from display name."""
+    seed = (node_id or "").replace("-", " ").replace("_", " ")
+    pascal = to_pascal_case(seed)
+    if not pascal or not is_binding_identifier(pascal):
+        cleaned = re.sub(r"[^A-Za-z0-9_]", "_", node_id or "")
+        cleaned = re.sub(r"_+", "_", cleaned).strip("_")
+        prefix = to_pascal_case(node_type) or "Element"
+        if not is_binding_identifier(prefix):
+            prefix = "Element"
+        if not cleaned:
+            pascal = prefix
+        elif cleaned[0].isdigit():
+            pascal = f"{prefix}_{cleaned}"
+        else:
+            pascal = cleaned[0].upper() + cleaned[1:]
+            if not is_binding_identifier(pascal):
+                pascal = f"{prefix}_{cleaned}"
+        if not is_binding_identifier(pascal):
+            pascal = prefix
+    candidate = pascal
+    n = 2
+    while candidate in used:
+        candidate = f"{pascal}_{n}"
+        n += 1
+    used.add(candidate)
+    return candidate
 
 
 def normalize_hex_color(color_str: Optional[str]) -> Optional[str]:

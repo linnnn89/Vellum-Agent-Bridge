@@ -18,7 +18,7 @@ from .validator import VellumValidationError, validate_vellum_dict, validate_vel
 from .vellum_adapter import VellumDocumentAdapter
 from .wpf_generator import WpfGenerator
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 
 __all__ = [
     "UiLayout",

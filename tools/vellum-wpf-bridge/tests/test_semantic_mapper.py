@@ -61,7 +61,11 @@ class TestSemanticMapper(unittest.TestCase):
         send_btn = next((c for c in action_bar.children if c.type == "button"), None)
         self.assertIsNotNone(send_btn)
         self.assertEqual(send_btn.props.get("text"), "Send")
-        self.assertEqual(send_btn.props.get("command"), "SendCommand")
+        self.assertNotIn("command", send_btn.props)
+        self.assertEqual(send_btn.props.get("actionHint"), "Send")
+        self.assertEqual(send_btn.props.get("commandCandidate"), "SendCommand")
+        self.assertEqual(send_btn.generated_name, "BtnSend")
+        self.assertEqual(send_btn.name, "SendButton")
 
         # Check Input heuristic in ActionBar: Message input is mapped to input
         msg_input = next((c for c in action_bar.children if c.type == "input"), None)

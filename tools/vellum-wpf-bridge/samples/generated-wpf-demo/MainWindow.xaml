@@ -123,9 +123,23 @@ Temperature: 0.7 · D&amp;D 5e Ruleset" Width="208" Height="36" Foreground="{Sta
                         <ColumnDefinition Width="100"/>
                     </Grid.ColumnDefinitions>
                     <!-- Vellum: input-message / MessageInput -->
-                    <TextBox x:Name="MessageInput" ToolTip="Describe your action or type a command (/roll 1d20+5)..." Tag="Describe your action or type a command (/roll 1d20+5)..." Grid.Column="0" HorizontalAlignment="Stretch" Height="38" Background="{StaticResource Brush.Neutral.Darkbg}" Foreground="#D0D0D0" BorderBrush="#3B3549" BorderThickness="1" FontSize="12" VerticalContentAlignment="Center" Padding="8,4"/>
+                    <Border Grid.Column="0" HorizontalAlignment="Stretch" Height="38" Background="{StaticResource Brush.Neutral.Darkbg}" BorderBrush="#3B3549" BorderThickness="1" CornerRadius="6">
+                        <TextBox x:Name="InputMessage" ToolTip="Describe your action or type a command (/roll 1d20+5)..." Tag="Describe your action or type a command (/roll 1d20+5)..." Foreground="#D0D0D0" FontSize="12" VerticalContentAlignment="Center" Padding="8,4" Background="Transparent" BorderThickness="0" HorizontalAlignment="Stretch"/>
+                    </Border>
                     <!-- Vellum: btn-send / SendButton -->
-                    <Button x:Name="SendButton" Content="Send" Command="{Binding SendCommand}" Grid.Column="2" Width="100" Height="38" Background="{StaticResource Brush.Brand.Purple}" Foreground="{StaticResource Brush.Text.Primary}" FontSize="13"/>
+                    <Button x:Name="BtnSend" Content="Send" Grid.Column="2" Width="100" Height="38" Background="{StaticResource Brush.Brand.Purple}" Foreground="{StaticResource Brush.Text.Primary}" BorderThickness="0" FontSize="13" Padding="8,4">
+                        <Button.Template>
+                            <ControlTemplate TargetType="Button">
+                                <Border Background="{TemplateBinding Background}"
+                                        BorderBrush="{TemplateBinding BorderBrush}"
+                                        BorderThickness="{TemplateBinding BorderThickness}"
+                                        CornerRadius="6"
+                                        Padding="{TemplateBinding Padding}">
+                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                            </ControlTemplate>
+                        </Button.Template>
+                    </Button>
                 </Grid>
             </Border>
         </Grid>

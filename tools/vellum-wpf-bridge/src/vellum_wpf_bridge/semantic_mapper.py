@@ -18,8 +18,7 @@ from .models import (
     VellumNode,
 )
 from .report import ConversionReport
-from .resources import ResourceManager
-from .utils import normalize_hex_color, to_pascal_case, is_binding_identifier
+from .utils import is_binding_identifier, make_generated_name, normalize_hex_color, to_pascal_case
 
 
 _CONTAINER_NAME_MARKERS = (
@@ -87,8 +86,7 @@ class SemanticMapper:
                 name = item.get("name", "")
                 val = normalize_hex_color(item.get("value"))
                 if val and name:
-                    key = ResourceManager.token_name_to_resource_key(name)
-                    resources[key] = val
+                    resources[name] = val
 
         spec = UiSpec(
             version="0.1",
@@ -101,7 +99,21 @@ class SemanticMapper:
             root=root_ui_node,
             assets=dict(doc.assets),
         )
+        self._assign_generated_names(spec.root)
         return spec
+
+    def _assign_generated_names(self, root: Optional[UiNode]) -> None:
+        """Stamp stable XAML identifiers once. Never derived from display name."""
+        used: set = set()
+
+        def walk(node: UiNode) -> None:
+            if node.type in ("button", "input"):
+                node.generated_name = make_generated_name(node.id, used, node_type=node.type)
+            for child in node.children:
+                walk(child)
+
+        if root:
+            walk(root)
 
 
     def _map_node(self, node: VellumNode, is_window_root: bool = False) -> UiNode:
@@ -193,8 +205,10 @@ class SemanticMapper:
         )
         layout = apply_sizing_contract(UiLayout(), node, report=self.report)
         props: Dict[str, Any] = {"text": button_text or "Button"}
+        if button_text:
+            props["actionHint"] = button_text
         if is_binding_identifier(command_name):
-            props["command"] = command_name
+            props["commandCandidate"] = command_name
 
         self.report.record_node(converted=True)
         self.report.add_promoted(

@@ -18,7 +18,14 @@ from .report import ConversionReport
 from .spec_validator import validate_ui_spec_model
 from .assets import export_assets
 from .resources import ResourceManager
-from .utils import escape_xaml_literal, escape_xml_comment, fmt_length, is_binding_identifier, is_dotted_identifier, to_pascal_case
+from .utils import (
+    escape_xaml_literal,
+    escape_xml_comment,
+    fmt_length,
+    is_binding_identifier,
+    is_dotted_identifier,
+    make_generated_name,
+)
 
 
 @dataclass
@@ -44,34 +51,21 @@ class WpfGenerator:
         self.report = report
         self._used_names: Set[str] = set()
 
-    def _sanitize_xaml_name(self, name: str) -> str:
-        pascal = to_pascal_case(name)
-        if not pascal:
-            return "Element"
-        cleaned = re.sub(r"[^a-zA-Z0-9_]", "_", pascal)
-        if cleaned and cleaned[0].isdigit():
-            cleaned = "_" + cleaned
-        return cleaned or "Element"
-
     def _resolve_x_name(
         self, node: UiNode, default_prefix: str = "Element", force: bool = True
     ) -> Optional[str]:
+        stored = node.generated_name
+        if stored and is_binding_identifier(stored):
+            candidate = stored
+            counter = 2
+            while candidate in self._used_names:
+                candidate = f"{stored}_{counter}"
+                counter += 1
+            self._used_names.add(candidate)
+            return candidate
         if not force:
-            if not (
-                node.props.get("binding")
-                or node.props.get("bind")
-                or node.props.get("xName")
-            ):
-                return None
-        raw_name = node.props.get("xName") or node.name or default_prefix
-        base_name = self._sanitize_xaml_name(raw_name)
-        candidate = base_name
-        counter = 2
-        while candidate in self._used_names:
-            candidate = f"{base_name}_{counter}"
-            counter += 1
-        self._used_names.add(candidate)
-        return candidate
+            return None
+        return make_generated_name(node.id, self._used_names, node_type=default_prefix)
 
     def generate_all(self, spec: UiSpec, app_namespace: str = "GeneratedWpfDemo") -> Dict[str, Union[str, bytes]]:
         validate_ui_spec_model(spec)
@@ -263,44 +257,91 @@ class WpfGenerator:
         fg = self.rm.get_color_reference(node.style.foreground)
         if fg:
             attrs.append(f'Foreground="{fg}"')
+        border = self.rm.get_color_reference(node.style.border_color)
+        if border:
+            attrs.append(f'BorderBrush="{border}"')
+        if node.style.border_thickness is not None and node.style.border_thickness > 0:
+            attrs.append(f'BorderThickness="{fmt_length(node.style.border_thickness)}"')
+        else:
+            attrs.append('BorderThickness="0"')
         if node.style.font_size:
             attrs.append(f'FontSize="{fmt_length(node.style.font_size)}"')
+        attrs.append('Padding="8,4"')
+        radius = node.style.corner_radius
+        if radius is not None and radius > 0:
+            inner = indent + "    "
+            return [
+                f"{indent}<Button {' '.join(attrs)}>",
+                f"{inner}<Button.Template>",
+                f'{inner}    <ControlTemplate TargetType="Button">',
+                f'{inner}        <Border Background="{{TemplateBinding Background}}"',
+                f'{inner}                BorderBrush="{{TemplateBinding BorderBrush}}"',
+                f'{inner}                BorderThickness="{{TemplateBinding BorderThickness}}"',
+                f'{inner}                CornerRadius="{fmt_length(radius)}"',
+                f'{inner}                Padding="{{TemplateBinding Padding}}">',
+                f'{inner}            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>',
+                f"{inner}        </Border>",
+                f"{inner}    </ControlTemplate>",
+                f"{inner}</Button.Template>",
+                f"{indent}</Button>",
+            ]
         return [f"{indent}<Button {' '.join(attrs)}/>"]
 
     def _generate_input(self, node: UiNode, indent_level: int, ctx: EmitContext) -> List[str]:
         indent = "    " * indent_level
-        attrs = []
+        attrs: List[str] = []
         pascal_name = self._resolve_x_name(node, default_prefix="Input", force=True)
         if pascal_name:
             attrs.append(f'x:Name="{pascal_name}"')
-        
+
         # TextBox.Text must remain empty unless explicitly set in props["text"]
         if node.props.get("text"):
             attrs.append(f'Text="{escape_xaml_literal(str(node.props["text"]))}"')
-        
+
         placeholder = node.props.get("placeholder")
         if placeholder:
             if "tooltip" not in node.props:
                 attrs.append(f'ToolTip="{escape_xaml_literal(str(placeholder))}"')
             attrs.append(f'Tag="{escape_xaml_literal(str(placeholder))}"')
 
-        attrs.extend(self._slot_attrs(node, ctx))
-        attrs.extend(self._size_attrs(node, ctx))
-        bg = self.rm.get_color_reference(node.style.background)
-        if bg:
-            attrs.append(f'Background="{bg}"')
         fg = self.rm.get_color_reference(node.style.foreground)
         if fg:
             attrs.append(f'Foreground="{fg}"')
-        border = self.rm.get_color_reference(node.style.border_color)
-        if border:
-            attrs.append(f'BorderBrush="{border}"')
-        if node.style.border_thickness:
-            attrs.append(f'BorderThickness="{fmt_length(node.style.border_thickness)}"')
         if node.style.font_size:
             attrs.append(f'FontSize="{fmt_length(node.style.font_size)}"')
         attrs.append('VerticalContentAlignment="Center"')
         attrs.append('Padding="8,4"')
+
+        bg = self.rm.get_color_reference(node.style.background)
+        border = self.rm.get_color_reference(node.style.border_color)
+        radius = node.style.corner_radius
+        wrap = radius is not None and radius > 0
+        if wrap:
+            border_attrs = self._slot_attrs(node, ctx) + self._size_attrs(node, ctx)
+            if bg:
+                border_attrs.append(f'Background="{bg}"')
+            if border:
+                border_attrs.append(f'BorderBrush="{border}"')
+            if node.style.border_thickness:
+                border_attrs.append(f'BorderThickness="{fmt_length(node.style.border_thickness)}"')
+            border_attrs.append(f'CornerRadius="{fmt_length(radius)}"')
+            attrs.append('Background="Transparent"')
+            attrs.append('BorderThickness="0"')
+            attrs.append('HorizontalAlignment="Stretch"')
+            return [
+                f"{indent}<Border {' '.join(border_attrs)}>",
+                f"{indent}    <TextBox {' '.join(attrs)}/>",
+                f"{indent}</Border>",
+            ]
+
+        attrs.extend(self._slot_attrs(node, ctx))
+        attrs.extend(self._size_attrs(node, ctx))
+        if bg:
+            attrs.append(f'Background="{bg}"')
+        if border:
+            attrs.append(f'BorderBrush="{border}"')
+        if node.style.border_thickness:
+            attrs.append(f'BorderThickness="{fmt_length(node.style.border_thickness)}"')
         return [f"{indent}<TextBox {' '.join(attrs)}/>"]
 
     def _generate_text(self, node: UiNode, indent_level: int, ctx: EmitContext) -> List[str]:
@@ -327,6 +368,12 @@ class WpfGenerator:
             attrs.append(f'FontWeight="{weight_val}"')
         if node.style.font_family:
             attrs.append(f'FontFamily="{escape_xaml_literal(str(node.style.font_family))}"')
+        font_style = _wpf_font_style(node.style.font_style)
+        if font_style and font_style != "Normal":
+            attrs.append(f'FontStyle="{font_style}"')
+        text_align = _wpf_text_align(node.style.text_align)
+        if text_align and text_align != "Left":
+            attrs.append(f'TextAlignment="{text_align}"')
         if node.style.opacity is not None and node.style.opacity < 1.0:
             attrs.append(f'Opacity="{node.style.opacity:.2f}"')
         attrs.append('TextWrapping="Wrap"')
@@ -500,3 +547,20 @@ class WpfGenerator:
 
 def _safe_namespace(app_namespace: str) -> str:
     return app_namespace if is_dotted_identifier(app_namespace) else "GeneratedWpfDemo"
+
+
+def _wpf_font_style(value: Optional[str]) -> Optional[str]:
+    if not isinstance(value, str) or not value.strip():
+        return None
+    return {"italic": "Italic", "oblique": "Oblique", "normal": "Normal"}.get(value.strip().lower())
+
+
+def _wpf_text_align(value: Optional[str]) -> Optional[str]:
+    if not isinstance(value, str) or not value.strip():
+        return None
+    return {
+        "left": "Left",
+        "center": "Center",
+        "right": "Right",
+        "justify": "Justify",
+    }.get(value.strip().lower())

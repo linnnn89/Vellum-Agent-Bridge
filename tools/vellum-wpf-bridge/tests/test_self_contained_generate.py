@@ -146,8 +146,10 @@ class TestSelfContainedGenerate(unittest.TestCase):
             ),
         )
         xaml = gen.generate_main_window_xaml(spec)
-        self.assertIn('x:Name="SubmitButton"', xaml)
-        self.assertIn('x:Name="UserNameInput"', xaml)
+        self.assertIn('x:Name="Btn"', xaml)
+        self.assertIn('x:Name="Inp"', xaml)
+        self.assertNotIn('x:Name="SubmitButton"', xaml)
+        self.assertNotIn('x:Name="UserNameInput"', xaml)
         # Plain text should NOT receive x:Name
         self.assertNotIn('x:Name="StaticDescription"', xaml)
 

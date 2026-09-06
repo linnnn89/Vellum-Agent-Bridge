@@ -136,6 +136,7 @@ class TestSafeAgentRefiner(unittest.TestCase):
             "style.background",
             "children",
             "resources",
+            "generatedName",
         ]
         for path in forbidden_paths:
             with self.subTest(path=path):

@@ -22,7 +22,7 @@ class ResourceManager:
         self.inferred_token_notes: List[str] = []
 
     def load_from_spec(self, spec: UiSpec):
-        """Load resources defined directly in UiSpec.resources (self-contained IR)."""
+        """Load IR resource keys; convert semantic names to WPF Brush.* keys here."""
         if not spec or not spec.resources:
             return
         for key, val in spec.resources.items():

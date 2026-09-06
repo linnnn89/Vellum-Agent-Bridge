@@ -81,6 +81,10 @@ def validate_ui_spec_dict(data, *, allow_empty_root=False):
                      'text', 'button', 'input', 'image', 'separator', 'card', 'badge', 'icon', 'unknown')})
         if 'name' in value:
             _string(value['name'], path + '.name')
+        if 'generatedName' in value:
+            _string(value['generatedName'], path + '.generatedName')
+            _require(is_binding_identifier(value['generatedName']),
+                     path + '.generatedName', 'ASCII identifier')
         source = value.get('source', {})
         _object(source, path + '.source')
         for key in ('format', 'nodeId', 'nodeName', 'sourceType'):
@@ -135,11 +139,15 @@ def validate_ui_spec_dict(data, *, allow_empty_root=False):
                 _number(style['fontWeight'], path + '.style.fontWeight', 0)
         props = value.get('props', {})
         _object(props, path + '.props')
-        for key in ('text', 'placeholder', 'command', 'icon', 'assetId', 'xName', 'tooltip', 'accessibleName', 'helpText', 'semanticRole'):
+        for key in ('text', 'placeholder', 'command', 'commandCandidate', 'actionHint',
+                    'icon', 'assetId', 'xName', 'tooltip', 'accessibleName', 'helpText', 'semanticRole'):
             if key in props:
                 _string(props[key], f'{path}.props.{key}')
         if 'command' in props:
             _require(is_binding_identifier(props['command']), path + '.props.command', 'ASCII identifier')
+        if 'commandCandidate' in props:
+            _require(is_binding_identifier(props['commandCandidate']),
+                     path + '.props.commandCandidate', 'ASCII identifier')
         if value['type'] == 'image':
             _require(props.get('assetId') in asset_refs, path + '.props.assetId', 'existing embedded image asset')
         warnings = value.get('warnings', [])

@@ -54,7 +54,7 @@ Sizing、Anchoring、Flow 三个维度正交解耦，严禁通过图层名称（
 | **Freeform 自由排版** | `Canvas` | 子元素保留绝对设计坐标与物理尺寸（`Canvas.Left`, `Canvas.Top`, `Width`, `Height`），并输出 `responsive constraint lost on Canvas` 警告。 |
 | **内边距（Padding）** | `Border` 包装器 | 严禁将容器的 `padding` 错误映射为 `Margin`。若存在内边距，统一生成 `<Border Padding="..." ...>` 作为外层布局包装。 |
 | **输入控件（Input）** | `TextBox` | 严禁将占位提示符（placeholder）写入 `TextBox.Text`。`Text` 默认保持为空，placeholder 转入 `Tag` 或 `ToolTip`。 |
-| **控件标识（x:Name）** | 按需生成 | 严禁为所有文本块和面板普遍生成无意义的 `x:Name`。仅对 `Button`、`Input` 或有明确绑定需求的节点生成确定性、唯一的 PascalCase 标识。 |
+| **控件标识（x:Name）** | 按需生成 | 严禁为所有文本块和面板普遍生成无意义的 `x:Name`。仅对 `Button`、`Input` 生成 `generatedName`；WPF `x:Name` 只使用该字段（缺失时由稳定 `id` 推导）。Agent 可改 `name`，不可改 `generatedName`。 |
 
 ### 2.2 响应式 Canary 验证标准
 布局编译器必须持续通过 3 栏内容自适应测试（`260 | * | 260`）：
@@ -75,19 +75,21 @@ Sizing、Anchoring、Flow 三个维度正交解耦，严禁通过图层名称（
 
 ### 3.2 属性修改白名单与黑名单
 - **允许修改项（语义白名单）**：
-  - `name`（节点名称）
-  - `props.text`（文本内容）
-  - `props.command`（按钮绑定的命令名称）
+  - `name`（节点语义名称，不影响 `x:Name`）
+  - `props.text`（文本内容；仅 button / input / text）
+  - `props.command`（按钮绑定的命令名称；仅 button）
+  - `props.placeholder`（占位符；仅 input）
   - `props.tooltip`（提示信息）
   - `props.accessibleName`（无障碍名称）
   - `props.helpText`（辅助说明）
   - `props.semanticRole`（语义角色提示）
 - **禁止修改项（设计黑名单，直接拒绝）**：
-  - `id`、`type`、`source`
+  - `id`、`type`、`source`、`generatedName`
   - `layout.*`（包括 `type`, `direction`, `gap`, `padding`, `width`, `height`, `widthMode`, `heightMode`, `columns`, `rows` 等全部布局属性）
   - `style.*`（包括 `background`, `foreground`, `borderColor`, `borderThickness`, `cornerRadius`, `fontSize` 等视觉样式）
   - `children`（结构拓扑）
   - `resources`（资源定义）
+- **其它补丁规则**：同一 `nodeId+path` 不得 set 两次；编译器不得把语义猜测写成 `props.command`。
 
 ### 3.3 原子执行与审计报告
 1. **基底哈希检验**：校验 `baseSpecSha256` 是否与当前 `ui-spec.json` 的 SHA-256 完全吻合，防止并发冲突或脏读；
@@ -163,5 +165,5 @@ Sizing、Anchoring、Flow 三个维度正交解耦，严禁通过图层名称（
 
 1. **`validator.py`**：两遍扫描逻辑。遍一检查所有页面及其直接子节点的属性类型、有限数值、无负尺寸与 ID 唯一性字典；遍二扫描有向图，追溯 `parentId` 祖先链，拦截自环、非存在引用以及深度大于 100 的循环层级。
 2. **`layout_contract.py`**：将节点归纳为 fixed / fill / absolute，通过矩阵遍历计算各子元素在主轴与交叉轴的占比；为带 gap 的 Grid 生成虚交错列并对齐物理索引。
-3. **`resources.py`**：以色彩精确十六进制值（`#RRGGBB` / `#AARRGGBB`）为索引，自动提取 Token 名称（如 `Brand / Iris` $\to$ `Brush.Brand.Iris`），并统计引用频次，将跨图层高频颜色提升为 `Resources.xaml` 里的静态资源画刷。
+3. **`resources.py`**：IR 中保留语义 Token 名（如 `Brand / Iris`）；WPF 后端再转换为 `Brush.Brand.Iris`。以色彩精确十六进制值（`#RRGGBB` / `#AARRGGBB`）为索引去重，将跨图层高频颜色提升为 `Resources.xaml` 里的静态资源画刷。
 4. **`refiner.py`**：将目标 `ui-spec.json` 按键名升序格式化并哈希计算规范 SHA-256，匹配补丁中声明的 `baseSpecSha256`；随后基于递归节点字典进行针对性局部替换，所有修改前的值保存于内存回滚缓冲区，仅当全部 Operation 校验无误后方才执行写入操作并导出审计追踪。

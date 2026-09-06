@@ -7,7 +7,7 @@ import sys
 from typing import Optional
 
 from .models import UiSpec
-from .refiner import SafeAgentRefiner
+from .refiner import SafeAgentRefiner, compute_spec_canonical_sha256
 from .report import ConversionReport
 from .resources import ResourceManager
 from .semantic_mapper import SemanticMapper
@@ -233,6 +233,24 @@ def refine_apply(
         return 1
 
 
+def spec_hash(spec_file: str) -> int:
+    """Print the canonical SHA-256 of a Semantic UI Spec JSON file."""
+    in_path = Path(spec_file)
+    if not in_path.exists():
+        print(f"Error: Spec file not found: {in_path}", file=sys.stderr)
+        return 1
+    try:
+        data = json.loads(in_path.read_text(encoding="utf-8"))
+    except Exception as e:
+        print(f"Error reading spec: {e}", file=sys.stderr)
+        return 1
+    if not isinstance(data, dict):
+        print("Error: Spec root must be a JSON object.", file=sys.stderr)
+        return 1
+    print(compute_spec_canonical_sha256(data))
+    return 0
+
+
 def main():
     parser = argparse.ArgumentParser(
         prog="vellum-wpf",
@@ -307,6 +325,11 @@ def main():
         help="Output refinement audit report filename (default: refinement-report.json)",
     )
 
+    hash_parser = subparsers.add_parser(
+        "spec-hash", help="Print canonical SHA-256 of ui-spec.json for agent patches"
+    )
+    hash_parser.add_argument("spec", help="Path to ui-spec.json")
+
     args = parser.parse_args()
     if args.command == "validate":
         sys.exit(validate(input_file=args.input))
@@ -341,6 +364,8 @@ def main():
                 report_file=args.report,
             )
         )
+    elif args.command == "spec-hash":
+        sys.exit(spec_hash(spec_file=args.spec))
     else:
         parser.print_help()
         sys.exit(1)

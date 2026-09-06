@@ -49,6 +49,7 @@
       "properties": {
         "id": { "type": "string" },
         "name": { "type": "string" },
+        "generatedName": { "type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]*$", "maxLength": 128 },
         "type": {
           "type": "string",
           "enum": [
@@ -129,6 +130,8 @@
           "properties": {
             "text": { "type": "string" },
             "placeholder": { "type": "string" },
+            "actionHint": { "type": "string" },
+            "commandCandidate": { "type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]*$", "maxLength": 128 },
             "command": { "type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]*$", "maxLength": 128 },
             "tooltip": { "type": "string" },
             "accessibleName": { "type": "string" },

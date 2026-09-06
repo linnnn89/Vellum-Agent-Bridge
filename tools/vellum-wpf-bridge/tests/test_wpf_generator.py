@@ -55,8 +55,10 @@ class TestWpfGenerator(unittest.TestCase):
         self.assertIn('<ColumnDefinition Width="260"/>', win_xml)
         self.assertIn('<ColumnDefinition Width="*"/>', win_xml)
 
-        # Assert Button with Command
-        self.assertIn('Command="{Binding SendCommand}"', win_xml)
+        # Compiler must not infer Command bindings from button labels.
+        self.assertNotIn("Command=", win_xml)
+        self.assertIn('x:Name="BtnSend"', win_xml)
+        self.assertIn('x:Name="InputMessage"', win_xml)
 
         # Assert Source metadata comments are included
         self.assertIn("<!-- Vellum:", win_xml)

@@ -26,11 +26,11 @@ Vellum-Agent-Bridge 采用严格的三阶段编译与中介表示（IR）架构�
         ├─── [Optional: Safe Agent Refinement]
         │        ▲
         │        └── refiner.py (ui-spec-patch.schema.json, SHA-256 verification)
-        │            • Allowed: name, props.text, props.command, props.tooltip, props.accessibleName
-        │            • Disallowed: id, type, source, layout.*, style.*, children, resources
+        │            • Allowed: name, props.text, props.command, props.placeholder, props.tooltip, props.accessibleName
+        │            • Disallowed: id, type, source, generatedName, layout.*, style.*, children, resources
         │
         ▼  [3. Deterministic Code Synthesis]
-   wpf_generator.py (Reads only UiSpec; Border Padding; Placeholder in Tooltip; Minimal x:Name)
+   wpf_generator.py (Reads only UiSpec; Border Padding; Placeholder metadata; x:Name from generatedName)
         │
         ├── MainWindow.xaml (Responsive Grid & StackPanel layout)
         ├── Resources.xaml (Shared SolidColorBrush dictionary)
@@ -52,11 +52,11 @@ Vellum-Agent-Bridge 采用严格的三阶段编译与中介表示（IR）架构�
 | [`validator.py`](src/vellum_wpf_bridge/validator.py) | 源文件严格校验器 | • 验证 `format == 'vellum'`, `version == 1`；<br>• 检查节点 ID 格式与全局唯一性；<br>• 严格校验 `x, y, w, h, rotation, opacity` 为有限数值且尺寸非负（拒绝静默补默认值）；<br>• 校验 `parentId` 引用存在性与两遍扫描无环（Cycle Detection）拓扑检查。 |
 | [`vellum_adapter.py`](src/vellum_wpf_bridge/vellum_adapter.py) | 数据模型适配层 | • 将平面列表按 `parentId` 重组为保序树形场景（保留绘制 Z 轴顺序）；<br>• 将原始节点属性严格绑定为强类型 `VellumNode` 与 `VellumDocument`。 |
 | [`layout_contract.py`](src/vellum_wpf_bridge/layout_contract.py) | 布局契约状态机 | • Sizing（`fixed`/`fill`）、Anchoring（`constraintH`/`constraintV`）、Flow 正交解耦；<br>• 拒绝基于图层名猜测布局；仅 `stretch` 映射为 `fill`；<br>• 动态计算 Grid 列/行 `*` 轨道并插入 Spacer Track 表达 `gap`。 |
-| [`semantic_mapper.py`](src/vellum_wpf_bridge/semantic_mapper.py) | 语义提升映射器 | • 启发式识别按钮（Frame/Rect + 单 Text 子节点，或包含明确 Action 名）；<br>• 启发式识别输入框（包含 placeholder/单行输入形态）；<br>• 容器提升（Card / Header / Footer）；<br>• 将文档中的设计色彩 Token 规范化并打包进 `UiSpec.resources`。 |
-| [`resources.py`](src/vellum_wpf_bridge/resources.py) | 资源与色彩管理器 | • 收集并去重整个组件树的颜色；<br>• 支持直接从 `UiSpec.resources` 独立加载（Self-Contained）；<br>• 将 Token 名字转换为符合 WPF 规范的 `Brush.Brand.Primary` 键名。 |
-| [`refiner.py`](src/vellum_wpf_bridge/refiner.py) | 安全 Agent 修正器 | • 校验 Patch 规范 `ui-spec-patch.schema.json` 与 `baseSpecSha256`；<br>• 实施严格的白名单与黑名单过滤，拒绝修改布局与外观；<br>• 原子性提交并生成 `refinement-report.json` 审计清单。 |
-| [`wpf_generator.py`](src/vellum_wpf_bridge/wpf_generator.py) | WPF/XAML 合成引擎 | • 仅读取 `UiSpec`；<br>• 主轴含 `fill` 编译为 `Grid`，固定流编译为 `StackPanel`，自由画布回退为 `Canvas` 并保留物理设计尺寸；<br>• 内边距统一生成 `<Border Padding="..." ...>` 包装器；<br>• 输入框 Placeholder 放入 `Tag` / `ToolTip`，保持 `Text` 为空；<br>• 仅为 `Button`、`Input` 及显式绑定项生成确定性且唯一的 `x:Name`。 |
-| [`cli.py`](src/vellum_wpf_bridge/cli.py) | 命令行接口入口 | • 提供 `validate`, `convert`, `generate`, `refine-validate`, `refine-apply` 五大子命令的完整调度与状态码返回。 |
+| [`semantic_mapper.py`](src/vellum_wpf_bridge/semantic_mapper.py) | 语义提升映射器 | • 启发式识别按钮（Frame/Rect + 单 Text 子节点，或包含明确 Action 名）；<br>• 启发式识别输入框（包含 placeholder/单行输入形态）；<br>• 容器提升（Card / Header / Footer）；<br>• 将设计 Token 以语义名写入 `UiSpec.resources`（如 `Brand / Iris`）；<br>• 为 Button/Input 写入稳定 `generatedName`；可输出 `actionHint` / `commandCandidate`，但绝不自动写入 `props.command`。 |
+| [`resources.py`](src/vellum_wpf_bridge/resources.py) | 资源与色彩管理器 | • 收集并去重整个组件树的颜色；<br>• 支持直接从 `UiSpec.resources` 独立加载（Self-Contained）；<br>• 仅在 WPF 后端把语义名转换成 `Brush.Brand.Iris`。 |
+| [`refiner.py`](src/vellum_wpf_bridge/refiner.py) | 安全 Agent 修正器 | • 校验 Patch 规范 `ui-spec-patch.schema.json` 与 `baseSpecSha256`；<br>• 实施严格的白名单与黑名单过滤，拒绝修改布局、外观与 `generatedName`；<br>• 按节点类型拒绝无意义操作，拒绝同一 `nodeId+path` 重复 set；<br>• 原子性提交并生成 `refinement-report.json` 审计清单。 |
+| [`wpf_generator.py`](src/vellum_wpf_bridge/wpf_generator.py) | WPF/XAML 合成引擎 | • 仅读取 `UiSpec`；<br>• 主轴含 `fill` 编译为 `Grid`，固定流编译为 `StackPanel`，自由画布回退为 `Canvas` 并保留物理设计尺寸；<br>• 内边距统一生成 `<Border Padding="..." ...>` 包装器；<br>• 输入框 Placeholder 放入 `Tag` / `ToolTip`，保持 `Text` 为空；<br>• `x:Name` 只使用 `generatedName`（缺失时由稳定 `id` 推导，不用 `name`）；<br>• 仅当存在显式 `props.command` 时生成 `Command="{Binding ...}"`；<br>• TextBlock 输出 `FontStyle` / `TextAlignment`；Button 输出圆角与边框。 |
+| [`cli.py`](src/vellum_wpf_bridge/cli.py) | 命令行接口入口 | • 提供 `validate`, `convert`, `generate`, `spec-hash`, `refine-validate`, `refine-apply` 子命令。 |
 
 ---
 
@@ -112,12 +112,22 @@ vellum-wpf generate output/ui-spec.json -o output-wpf
 
 **颜色约定**：源 `.vellum` 的八位颜色为 `#RRGGBBAA`，进入 IR 前转换一次；`ui-spec.json` 的样式和资源八位颜色统一为 `#AARRGGBB`，资源管理器不得再次移动 alpha。例如源 `#12345680` 对应 IR/WPF `#80123456`。手写 IR 应遵守此约定，无法仅凭八位字符串自动判断作者使用了哪种顺序。三位、六位颜色继续支持。
 
-### 4. 校验 Agent 修正补丁 (Safe Refiner)
+### 4. 计算 Agent 补丁所需的 canonical SHA-256
+```bash
+vellum-wpf spec-hash output/ui-spec.json
+```
+> 输出一行 64 位 hex。补丁里的 `baseSpecSha256` 必须与此值一致。工作流：`spec-hash` → 编写 patch → `refine-validate` → `refine-apply`。
+
+`name` 是给人看的语义名；`generatedName` 是编译期写入的稳定 XAML 标识，Agent 不能改。`x:Name` 只读 `generatedName`。编译器可以把按钮意图写到 `props.actionHint` / `props.commandCandidate`，但只有用户或 Agent 显式设置的 `props.command` 才会生成 `Command="{Binding ...}"`。
+
+IR 的 `resources` 使用设计 Token 名（如 `"Brand / Iris": "#8462E8"`）。WPF 生成器再转换成 `Brush.Brand.Iris`。旧的 `Brush.*` 键仍可读取。
+
+### 5. 校验 Agent 修正补丁 (Safe Refiner)
 ```bash
 vellum-wpf refine-validate output/ui-spec.json path/to/patch.json
 ```
 
-### 5. 原子化应用 Agent 修正补丁
+### 6. 原子化应用 Agent 修正补丁
 ```bash
 vellum-wpf refine-apply output/ui-spec.json path/to/patch.json -o output-refined
 ```

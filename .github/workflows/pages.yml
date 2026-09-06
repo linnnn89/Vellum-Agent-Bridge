@@ -97,7 +97,7 @@ jobs:
         with:
           python-version: '3.12'
       - name: Set up .NET
-        uses: actions/setup-dotnet@3951f0dfe7a07e2313ec93c75700083e200f37a4 # v4
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
         with:
           dotnet-version: '10.0.x'
       - name: Install Bridge package and run unit & canary tests

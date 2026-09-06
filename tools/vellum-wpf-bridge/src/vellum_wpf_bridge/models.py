@@ -291,6 +291,7 @@ class UiNode:
     id: str
     type: str  # window, panel, frame, stack, grid, text, button, input, image, separator, card, badge, icon, unknown
     name: Optional[str] = None
+    generated_name: Optional[str] = None
     source: Optional[UiSource] = None
     layout: UiLayout = field(default_factory=UiLayout)
     style: UiStyle = field(default_factory=UiStyle)
@@ -305,6 +306,8 @@ class UiNode:
         }
         if self.name:
             res["name"] = self.name
+        if self.generated_name:
+            res["generatedName"] = self.generated_name
         if self.source:
             res["source"] = self.source.to_dict()
         layout_dict = self.layout.to_dict()
@@ -331,6 +334,7 @@ class UiNode:
             id=d["id"],
             type=d["type"],
             name=d.get("name"),
+            generated_name=d.get("generatedName"),
             source=source,
             layout=layout,
             style=style,

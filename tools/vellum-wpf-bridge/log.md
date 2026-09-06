@@ -123,3 +123,15 @@
 - 验证：py -3.10 tools/vellum-wpf-bridge/tests/run_tests.py，82/82 通过、0 跳过（12.051 秒）。新增 8 项测试：JSON/模型/导出/两种生成入口一致拒绝、多组 token、修改后复验、导出不隐藏负数、资源状态不变、发射层独立拦截、合法文本/命令/ARGB 往返、补丁验证与应用一致、失败目录与已有输出保护。此前两个“丢弃非法值”测试升级为必须抛异常，未放宽测试。
 - 反证自审：只在构造时校验挡不住 props 后改；只校验 to_dict 结果挡不住它省略非法 style 值。针对两者直接检查当前原始模型并加回归断言。WPF 真实解析、图片解码、无障碍、布局和 golden 全部通过。本轮未修改前端，未重跑浏览器测试。
 - 交付边界：过去静默丢属性的手写模型调用现在会报错，这是用户确认的兼容性变化；不承诺任意宿主 Python 代码受沙箱限制，也不声称磁盘写入失败有多文件原子回滚。未提交、推送或运行远端 Actions。
+
+
+## 2026-09-06 — 0.3 Vibe Coding 可用性
+
+- 目标：不改架构，让桥在真实 Vibe Coding 流程里能用。P0：Windows CI、语义名与 `generatedName` 分离、去掉自动 Command 推断。P1：`spec-hash`、按节点类型校验 patch、拒绝重复操作、常见控件视觉。P2：IR 资源名保持语义化。
+- CI：Windows job 在 Set up job 失败，原因是 `actions/setup-dotnet` 钉到不存在的 SHA `3951f0d…`。改为官方 v4.3.1 提交 `67a3573c9a986a3f9c594539f4ab511d57bb3ce9`。未改其它 CI 逻辑。
+- `name` 仍是可读语义名；编译器为 button/input 写入稳定 `generatedName`（由节点 `id` 确定性生成）。Agent 不能改 `generatedName`。WPF `x:Name` 只使用它。
+- 编译器不再把 “Send Button” 写成 `props.command`。可输出 `actionHint` / `commandCandidate`。只有显式 `props.command` 才生成 `Command="{Binding …}"`。
+- 新增 `vellum-wpf spec-hash`。patch 仍走白名单；`props.command` 仅 button，`props.placeholder` 仅 input，`props.text` 仅 button/input/text；同一 `nodeId+path` 重复 set 拒绝。
+- TextBlock 输出 FontStyle/TextAlignment；Button 输出 BorderBrush/BorderThickness/CornerRadius；Input 保留 placeholder 元数据并在有圆角时用 Border 包装。
+- IR `resources` 使用 Token 原名（`Brand / Purple`）；WPF 后端再转 `Brush.Brand.Purple`。未重写 ResourceManager。
+- 未做：OpenAI/Gemini/MCP、其它后端、PathGeometry、自动 ViewModel、自动改布局。

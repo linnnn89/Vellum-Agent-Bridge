@@ -21,10 +21,18 @@ ALLOWED_PATCH_PATHS: Set[str] = {
     "name",
     "props.text",
     "props.command",
+    "props.placeholder",
     "props.tooltip",
     "props.accessibleName",
     "props.helpText",
     "props.semanticRole",
+}
+
+# Paths that are meaningless except on specific node types.
+_PATH_ALLOWED_NODE_TYPES: Dict[str, Set[str]] = {
+    "props.command": {"button"},
+    "props.placeholder": {"input"},
+    "props.text": {"button", "input", "text"},
 }
 
 FORBIDDEN_PREFIXES: Tuple[str, ...] = (
@@ -35,6 +43,7 @@ FORBIDDEN_PREFIXES: Tuple[str, ...] = (
     "style",
     "children",
     "resources",
+    "generatedName",
 )
 
 _SHA256_HEX_RE = re.compile(r"^[a-f0-9]{64}$")
@@ -157,6 +166,7 @@ class SafeAgentRefiner:
             raise PatchValidationError("Patch 'operations' array is empty.")
 
         node_map = _collect_node_map(spec_data.get("root"))
+        seen_ops: Set[Tuple[str, str]] = set()
 
         for idx, op in enumerate(operations):
             if not isinstance(op, dict):
@@ -191,6 +201,21 @@ class SafeAgentRefiner:
                 raise PatchValidationError(
                     f"Disallowed patch path '{path}' at index {idx}. Allowed paths: {sorted(ALLOWED_PATCH_PATHS)}"
                 )
+
+            allowed_types = _PATH_ALLOWED_NODE_TYPES.get(path)
+            if allowed_types is not None:
+                node_type = node_map[node_id].get("type")
+                if node_type not in allowed_types:
+                    raise PatchValidationError(
+                        f"Operation at index {idx}: '{path}' is not valid for node type '{node_type}'."
+                    )
+
+            op_key = (node_id, path)
+            if op_key in seen_ops:
+                raise PatchValidationError(
+                    f"Duplicate operation at index {idx}: node '{node_id}' path '{path}' is set more than once."
+                )
+            seen_ops.add(op_key)
 
             reason = op.get("reason")
             if not isinstance(reason, str) or not reason.strip():
