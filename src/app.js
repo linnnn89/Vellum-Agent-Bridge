@@ -8,7 +8,13 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': 
 const fmt = n => Math.round(n * 100) / 100;
 const round = n => Math.round(n * 10) / 10;
 const isInput = e => e instanceof HTMLElement && (e.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(e.tagName));
-const defaultOptions = { grid: false, snap: true, rulers: false, theme: 'dark', language: 'zh-CN' };
+const defaultOptions = {
+    grid: false,
+    snap: true,
+    rulers: false,
+    theme: 'dark',
+    language: (typeof navigator !== 'undefined' && navigator.language?.startsWith('zh')) ? 'zh-CN' : 'en-US'
+};
 let options = { ...defaultOptions };
 try {
     Object.assign(options, JSON.parse(localStorage.getItem('vellum-options') || '{}'));
@@ -1769,6 +1775,7 @@ const getCommands = () => [
     [t('commands.inspectCSS'), 'inspectCSS'],
     [t('commands.addPage'), 'addPage'],
     [t('commands.settings'), 'settings'],
+    [t('commands.loadFont'), 'loadFont'],
     [t('commands.help'), 'help'],
     [t('commands.stressTest'), 'stressTest'],
     [t('commands.resetStarter'), 'resetStarter']
@@ -1777,7 +1784,12 @@ function commandPalette() {
     const commands = getCommands();
     modal(`<input class="command-search" id="command-search" placeholder="${esc(t('commands.searchPlaceholder'))}" aria-label="${esc(t('commands.searchAria'))}" autocomplete="off"><div class="command-results" id="command-results"></div><p style="font-size:10px;margin-bottom:0">${t('commands.navigateHint')}</p>`);
     let selectedIndex = 0, filtered = [];
-    const render = () => { filtered = commands.filter(([label]) => label.toLowerCase().includes($('#command-search').value.toLowerCase())); selectedIndex = Math.min(selectedIndex, Math.max(0, filtered.length - 1)); $('#command-results').innerHTML = filtered.map(([label, action], i) => `<button class="menu-item ${i === selectedIndex ? 'focused' : ''}" data-command="${action}"><span>${esc(label)}</span><span class="shortcut">↵</span></button>`).join('') || `<div class="empty-state">${t('commands.noMatching')}</div>`; };
+    const render = () => {
+        const q = $('#command-search').value.toLowerCase().trim();
+        filtered = commands.filter(([label, action]) => label.toLowerCase().includes(q) || action.toLowerCase().includes(q));
+        selectedIndex = Math.min(selectedIndex, Math.max(0, filtered.length - 1));
+        $('#command-results').innerHTML = filtered.map(([label, action], i) => `<button class="menu-item ${i === selectedIndex ? 'focused' : ''}" data-command="${action}"><span>${esc(label)}</span><span class="shortcut">↵</span></button>`).join('') || `<div class="empty-state">${t('commands.noMatching')}</div>`;
+    };
     $('#command-search').oninput = () => { selectedIndex = 0; render(); };
     $('#command-search').onkeydown = e => {
         if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
@@ -2547,7 +2559,6 @@ fontInput.accept = '.ttf,.otf,.woff,.woff2';
 fontInput.hidden = true;
 document.body.append(fontInput);
 actions.loadFont = () => fontInput.click();
-commands.splice(commands.length - 3, 0, ['Load a local font…', 'loadFont']);
 async function loadStoredFonts() {
     for (const [family, source] of Object.entries(doc.data.fonts || {})) {
         if (typeof source !== 'string' || !source.startsWith('data:'))

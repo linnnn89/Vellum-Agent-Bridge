@@ -27,7 +27,7 @@ async def main(args):
    results.append({'name':name,'passed':True})
    print('PASS',name,flush=True)
   if args.inline:
-   await page.set_content((ROOT/'Vellum.html').read_text(),wait_until='load')
+   await page.set_content((ROOT/'Vellum.html').read_text(encoding='utf-8'),wait_until='load')
   else:
    await page.goto(args.url,wait_until='networkidle')
   await page.wait_for_function('window.vellum?.ready')
@@ -122,7 +122,7 @@ async def main(args):
   if errors: raise AssertionError('Browser errors: '+repr(errors))
   results.append({'name':'No uncaught browser errors','passed':True})
   report={'mode':'inline opaque-origin browser' if args.inline else args.url,'passed':len(results),'results':results,'stressScene':stats,'limitations':['GPU execution was not validated in inline mode.','Opaque-origin inline mode cannot validate persistent browser storage.'] if args.inline else []}
-  (output/'results.json').write_text(json.dumps(report,indent=2))
+  (output/'results.json').write_text(json.dumps(report,indent=2),encoding='utf-8')
   print(json.dumps(report,indent=2))
   await browser.close()
 

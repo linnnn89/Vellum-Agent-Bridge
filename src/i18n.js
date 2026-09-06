@@ -200,6 +200,7 @@ const enUS = {
     inspectCSS: 'Inspect CSS',
     addPage: 'Add a page',
     settings: 'Rendering settings',
+    loadFont: 'Load a local font…',
     help: 'Keyboard shortcuts',
     stressTest: 'Create 5,000-shape stress test',
     resetStarter: 'Restore Forma starter document',
@@ -515,6 +516,7 @@ const zhCN = {
     inspectCSS: '检查 CSS 样式代码',
     addPage: '添加新页面',
     settings: '渲染设置与统计',
+    loadFont: '加载本地字体…',
     help: '键盘快捷键指南',
     stressTest: '生成 5,000 图形压力测试',
     resetStarter: '恢复 Forma 初始设计范例',
@@ -787,4 +789,3 @@ class I18nEngine {
 export const i18n = new I18nEngine();
 export const t = (key, params, fallback) => i18n.t(key, params, fallback);
 export const locales = { 'en-US': enUS, 'zh-CN': zhCN };
-export default i18n;

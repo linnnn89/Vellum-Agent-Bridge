@@ -10,6 +10,7 @@ code = []
 for name in modules:
     text = (ROOT / 'src' / name).read_text(encoding="utf-8")
     text = re.sub(r'^import .*?;\s*$', '', text, flags=re.M)
+    text = re.sub(r'^export\s+default\s+.*?;?\s*$', '', text, flags=re.M)
     text = re.sub(r'^export\s+', '', text, flags=re.M)
     code.append(f'\n// ===== {name} =====\n{text}')
 html = html.replace('<link rel="stylesheet" href="styles.css">', f'<style>{css}</style>')
