@@ -39,14 +39,19 @@ class SemanticMapper:
             raise ValueError("Document has no pages to convert.")
 
         page = doc.pages[page_index] if page_index < len(doc.pages) else doc.pages[0]
+        visible_roots = []
+        for node in page.root_nodes:
+            if node.visible:
+                visible_roots.append(node)
+            else:
+                self.report.record_node(converted=False, skipped=True)
 
         window_width = 1200.0
         window_height = 800.0
         theme = "dark"
 
-        if page.root_nodes:
-            frames = [n for n in page.root_nodes if n.type == "frame"]
-            target_frame = frames[0] if frames else page.root_nodes[0]
+        if visible_roots:
+            target_frame = next((n for n in visible_roots if n.type == "frame"), visible_roots[0])
             window_width = target_frame.w if target_frame.w > 0 else 1200.0
             window_height = target_frame.h if target_frame.h > 0 else 800.0
             if target_frame.fill:
@@ -58,10 +63,10 @@ class SemanticMapper:
                     brightness = (r * 299 + g * 587 + b * 114) / 1000
                     theme = "dark" if brightness < 128 else "light"
 
-        if len(page.root_nodes) == 1 and page.root_nodes[0].type == "frame":
-            root_ui_node = self._map_node(page.root_nodes[0], is_window_root=True)
+        if len(visible_roots) == 1 and visible_roots[0].type == "frame":
+            root_ui_node = self._map_node(visible_roots[0], is_window_root=True)
         else:
-            children = [self._map_node(n) for n in page.root_nodes]
+            children = [self._map_node(n) for n in visible_roots]
             root_ui_node = UiNode(
                 id="window-root",
                 type="window",
@@ -73,11 +78,13 @@ class SemanticMapper:
                 ),
                 children=children,
             )
-            self.report.add_diagnostic(
-                "warning",
-                "ABSOLUTE_LAYOUT_NOT_RESPONSIVE",
-                "Multiple page roots were wrapped in an absolute canvas.",
-            )
+            if visible_roots:
+                self.report.add_diagnostic(
+                    "warning",
+                    "ABSOLUTE_LAYOUT_NOT_RESPONSIVE",
+                    "Multiple page roots were wrapped in an absolute canvas."
+                    if len(visible_roots) > 1 else "Page root was wrapped in an absolute canvas.",
+                )
 
         resources: Dict[str, str] = {}
         if doc.tokens:
